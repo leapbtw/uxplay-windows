@@ -19,10 +19,10 @@ jobs:
       contents: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Checkout Main
+      - name: installing msys2
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
-      - uses: msys2/setup-msys2@v2  
-      - shell: msys2 {0}
+        uses: msys2/setup-msys2@v2
+      - name: running uname
+        shell: msys2 {0}
         run: |
           uname -a
