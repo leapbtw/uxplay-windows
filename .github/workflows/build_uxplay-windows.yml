@@ -21,8 +21,7 @@ jobs:
     steps:
       - name: clone the repo
         uses: actions/checkout@v4
-      - name: check clone
-        run: Get-Location
+        
       # the SDK requires the normal version of Bonjour to be installed first.
       - name: install Bonjour (64 bit)
         run: |
@@ -36,14 +35,7 @@ jobs:
           $msiFilePath = Join-Path -Path $currentPath -ChildPath "BonjourSDK64.msi"
           $msiexecArguments = "/i `"$msiFilePath`" /qn /L*v bonjoursdk64.log"
           Start-Process msiexec -ArgumentList $msiexecArguments -NoNewWindow -Wait
-      - name: output log bonjour64
-        run: Get-Content .\bonjour64.log
-      - name: output log bonjoursdk64.log
-        run: Get-Content .\bonjoursdk64.log
 
-      - name: ensure dns_sd.h
-        run: ls "C:\Program Files\"
-    
       - name: setup msys2
         uses: msys2/setup-msys2@v2
         with:
@@ -58,6 +50,8 @@ jobs:
             mingw-w64-x86_64-gst-libav
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
+
+            
       - name: building (finally)
         shell: msys2 {0}
         run: |
@@ -66,8 +60,15 @@ jobs:
           mkdir build && cd build
           cmake ..
           ninja
+          
+          mkdir artifact && cd artifact
+          cp -r /mingw64/lib lib
+          cp -r /mingw64/bin bin
+          cp ../uxplay.exe bin
+          echo ".\bin\uxplay.exe" > uxplay-windows.bat
+          
       - name: uploading artifact
         uses: actions/upload-artifact@v4
         with:
           name: uxplay-windows
-          path: .
+          path: UxPlay/build/artifact
