@@ -28,7 +28,7 @@ jobs:
         run: .\BonjourSDK64.msi /quiet
 
       - name: ensure dns_sd.h
-        run: ls "C:\Program Files\Bonjour SDK\Include"
+        run: ls "C:\Program Files\"
     
       - name: setup msys2
         uses: msys2/setup-msys2@v2
