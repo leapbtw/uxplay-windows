@@ -22,7 +22,7 @@ jobs:
       - name: clone the repo
         uses: actions/checkout@v4
       - name: check clone
-        run: ls
+        run: Get-Location
       # the SDK requires the normal version of Bonjour to be installed first.
       - name: install Bonjour (64 bit)
         run: Start-Process msiexec -ArgumentList "/i .\Bonjour64.msi /qn /L*v bonjour64.log" -NoNewWindow -Wait
