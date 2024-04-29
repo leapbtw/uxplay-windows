@@ -19,9 +19,19 @@ jobs:
       contents: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: installing msys2
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-        uses: msys2/setup-msys2@v2
+      - name: setupuses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            git
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-libplist
+            mingw-w64-x86_64-gstreamer
+            mingw-w64-x86_64-gst-plugins-base
+            mingw-w64-x86_64-gst-libav
+            mingw-w64-x86_64-gst-plugins-good
+            mingw-w64-x86_64-gst-plugins-bad
       - name: running uname
         shell: msys2 {0}
         run: |
