@@ -19,10 +19,13 @@ jobs:
       contents: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: install bonjour
+      - name: clone the repo
         uses: actions/checkout@v4
-      - name: ls
-        run: ls
+      # the SDK requires the normal version of Bonjour to be installed first.
+      - name: install Bonjour (64 bit)
+        run: .\Bonjour64.msi /quiet
+      - name: install Bonjour SDK (64 bit)
+        run: .\BonjourSDK64.msi /quiet
     
       - name: setup msys2
         uses: msys2/setup-msys2@v2
@@ -38,9 +41,11 @@ jobs:
             mingw-w64-x86_64-gst-libav
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
-      - name: running uname
+      - name: building (finally)
         shell: msys2 {0}
         run: |
           uname -a
           git clone https://github.com/FDH2/UxPlay && cd UxPlay
           mkdir build && cd build
+          cmake ..
+          ninja
