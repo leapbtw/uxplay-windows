@@ -25,7 +25,7 @@ jobs:
         run: Get-Location
       # the SDK requires the normal version of Bonjour to be installed first.
       - name: install Bonjour (64 bit)
-        run: Start-Process msiexec -ArgumentList "/i .\Bonjour64.msi /qn /L*v bonjour64.log" -NoNewWindow -Wait
+        run: Start-Process msiexec -ArgumentList "/i D:\a\uxplay-windows\uxplay-windows\Bonjour64.msi /qn /L*v bonjour64.log" -NoNewWindow -Wait
       - name: install Bonjour SDK (64 bit)
         run: .\BonjourSDK64.msi /quiet /l bonjoursdk64.log
       - name: output log bonjour64
