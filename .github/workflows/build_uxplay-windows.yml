@@ -66,9 +66,10 @@ jobs:
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
+          zip -r output.zip lib/ bin/ uxplay-windows.bat
           
       - name: uploading artifact
         uses: actions/upload-artifact@v4
         with:
           name: uxplay-windows
-          path: UxPlay/build/artifact
+          path: UxPlay/build/artifact/output.zip
