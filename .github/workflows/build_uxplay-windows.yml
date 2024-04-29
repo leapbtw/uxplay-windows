@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: clone the repo
         uses: actions/checkout@v4
+      - name: check clone
+        run: ls
       # the SDK requires the normal version of Bonjour to be installed first.
       - name: install Bonjour (64 bit)
         run: .\Bonjour64.msi /quiet
