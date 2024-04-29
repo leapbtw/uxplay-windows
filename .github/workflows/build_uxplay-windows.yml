@@ -19,7 +19,12 @@ jobs:
       contents: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: setup
+      - name: install bonjour
+        uses: action/checkout@v4
+      - name: ls
+        run: ls
+    
+      - name: setup msys2
         uses: msys2/setup-msys2@v2
         with:
           update: true
