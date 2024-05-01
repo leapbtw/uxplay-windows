@@ -50,6 +50,7 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-libplist
+            mingw-w64-x86_64-json-glib
             mingw-w64-x86_64-gstreamer
             mingw-w64-x86_64-gst-plugins-base
             mingw-w64-x86_64-gst-libav
@@ -59,11 +60,6 @@ jobs:
       - name: building (finally)
         shell: msys2 {0}
         run: |
-
-          echo "PRE INSTALLAZIONE"
-          ls /bin
-          
-          uname -a
           git clone https://github.com/FDH2/UxPlay && cd UxPlay
           mkdir build && cd build
           cmake ..
