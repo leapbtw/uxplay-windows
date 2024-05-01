@@ -36,6 +36,15 @@ jobs:
           $msiexecArguments = "/i `"$msiFilePath`" /qn /L*v bonjoursdk64.log"
           Start-Process msiexec -ArgumentList $msiexecArguments -NoNewWindow -Wait
 
+      - name: downloading Inno Setup
+        run: Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
+
+      - name: installing Inno Setup
+        run: .\innosetup-6.2.2.exe /VERYSILENT
+
+      - name: check Inno Setup
+        run: ls ${env:PROGRAMFILES(X86)}
+        
       - name: setup msys2
         uses: msys2/setup-msys2@v2
         with:
@@ -51,6 +60,7 @@ jobs:
             mingw-w64-x86_64-gst-libav
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
+
 
             
       - name: building (finally)
