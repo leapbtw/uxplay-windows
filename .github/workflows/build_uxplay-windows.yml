@@ -41,11 +41,11 @@ jobs:
       - name: installing Inno Setup
         run: start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
 
-      - name: Compile .ISS to .EXE Installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
-        with:
-          path: .\setup.iss
-          options: /O+
+      #- name: Compile .ISS to .EXE Installer
+      #  uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+      #  with:
+      #    path: .\setup.iss
+      #    options: /O+
         
       - name: setup msys2
         uses: msys2/setup-msys2@v2
