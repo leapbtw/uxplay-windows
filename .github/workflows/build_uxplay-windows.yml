@@ -48,22 +48,15 @@ jobs:
         with:
           update: true
           install: >-
-            git
-            zip
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-libplist
-            mingw-w64-x86_64-gstreamer
-            mingw-w64-x86_64-gst-plugins-base
-            mingw-w64-x86_64-gst-libav
-            mingw-w64-x86_64-gst-plugins-good
-            mingw-w64-x86_64-gst-plugins-bad
 
 
             
       - name: building (finally)
         shell: msys2 {0}
         run: |
+          echo "PRE INSTALLAZIONE"
+          ls /bin
+          
           uname -a
           git clone https://github.com/FDH2/UxPlay && cd UxPlay
           mkdir build && cd build
@@ -75,7 +68,6 @@ jobs:
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
-      #    zip -r output.zip lib/ bin/ uxplay-windows.bat
     
       - name: testing if innosetup.exe esists
         run: Test-Path -Path $(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath "Inno Setup 6\ISCC.exe") -PathType Leaf
