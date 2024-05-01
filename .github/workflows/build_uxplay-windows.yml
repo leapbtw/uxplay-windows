@@ -78,7 +78,7 @@ jobs:
       #    zip -r output.zip lib/ bin/ uxplay-windows.bat
     
       - name: testing if innosetup.exe esists
-        run: Test-Path -Path $(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath "Inno Setup 6\ISCC.exe"") -PathType Leaf
+        run: Test-Path -Path $(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath "Inno Setup 6\ISCC.exe") -PathType Leaf
 
       - name: compile the installer with inno setup
         run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') .\script.iss
