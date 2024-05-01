@@ -40,7 +40,7 @@ jobs:
         run: Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
 
       - name: installing Inno Setup
-        run: .\innosetup-6.2.2.exe /VERYSILENT
+        run: start (Join-Path -Path $(Get-Location) -ChildPath "innosetup-6.2.2.exe") /VERYSILENT
 
       - name: check Inno Setup
         run: ls ${env:PROGRAMFILES(X86)}
