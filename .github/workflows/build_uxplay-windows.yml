@@ -44,9 +44,7 @@ jobs:
         uses: msys2/setup-msys2@v2
 
       - name: ls c
-        run: ls C:\
-      - name: ls d
-        run: D:\
+        run: ls C:\mingw64\bin
 
 
       - name: building (finally)
