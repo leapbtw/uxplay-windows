@@ -56,10 +56,6 @@ jobs:
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
 
-      - name: ls c
-        run: ls C:\mingw64\bin
-
-
       - name: building (finally)
         shell: msys2 {0}
         run: |
@@ -74,7 +70,8 @@ jobs:
           ninja
           
           mkdir artifact && cd artifact
-          cp -r /mingw64/lib lib
+          mkdir lib
+          cp -r /mingw64/lib/gstreamer-1.0 lib/gstreamer-1.0
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
