@@ -22,9 +22,6 @@ jobs:
     
       - name: clone the repo
         uses: actions/checkout@v4
-
-      - name: list
-        run: ls
         
       # the SDK requires the normal version of Bonjour to be installed first.
       - name: install Bonjour (64 bit)
@@ -84,7 +81,7 @@ jobs:
         run: Test-Path -Path $(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath "Inno Setup 6\ISCC.exe") -PathType Leaf
 
       - name: compile the installer with inno setup
-        run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') .\script.iss
+        run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') $(Join-Path -Path $(Get-Location) -ChildPath "script.iss")
       
       - name: uploading artifact
         uses: actions/upload-artifact@v4
