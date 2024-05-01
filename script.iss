@@ -17,7 +17,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputBaseFilename=uxplay-windows
-SetupIconFile=D:\a\uxplay-windows\uxplay-windows\UxPlay\icon.ico
+SetupIconFile=D:\a\uxplay-windows\uxplay-windows\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
