@@ -40,12 +40,6 @@ jobs:
 
       - name: installing Inno Setup
         run: start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
-
-      #- name: Compile .ISS to .EXE Installer
-      #  uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
-      #  with:
-      #    path: .\setup.iss
-      #    options: /O+
         
       - name: setup msys2
         uses: msys2/setup-msys2@v2
@@ -79,15 +73,16 @@ jobs:
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
-          zip -r output.zip lib/ bin/ uxplay-windows.bat
-
-      - name: output start path
-        run: |
-          Get-Location
-          Get-ChildItem
-          
+      #    zip -r output.zip lib/ bin/ uxplay-windows.bat
+    
+      - name: using Inno Setup to create an Installer for uxplay
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: .\setup.iss
+          # options: /O+
+      
       - name: uploading artifact
         uses: actions/upload-artifact@v4
         with:
           name: uxplay-windows
-          path: UxPlay/build/artifact/output.zip
+          path: Output\uxplay-windows.exe
