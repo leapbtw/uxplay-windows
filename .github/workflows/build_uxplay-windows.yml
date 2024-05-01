@@ -19,6 +19,7 @@ jobs:
       contents: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+    
       - name: clone the repo
         uses: actions/checkout@v4
         
@@ -31,9 +32,7 @@ jobs:
           Start-Process msiexec -ArgumentList $msiexecArguments -NoNewWindow -Wait
       - name: install Bonjour SDK (64 bit)
         run: |
-          $currentPath = Get-Location
-          $msiFilePath = Join-Path -Path $currentPath -ChildPath "BonjourSDK64.msi"
-          $msiexecArguments = "/i `"$msiFilePath`" /qn /L*v bonjoursdk64.log"
+          $msiexecArguments = "/i $(Join-Path -Path $(Get-Location) -ChildPath "BonjourSDK64.msi") /qn /L*v bonjoursdk64.log"
           Start-Process msiexec -ArgumentList $msiexecArguments -NoNewWindow -Wait
 
       - name: downloading Inno Setup
@@ -42,8 +41,11 @@ jobs:
       - name: installing Inno Setup
         run: start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
 
-      - name: check Inno Setup
-        run: ls ${env:PROGRAMFILES(X86)}
+      - name: Compile .ISS to .EXE Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: .\setup.iss
+          options: /O+
         
       - name: setup msys2
         uses: msys2/setup-msys2@v2
@@ -78,6 +80,11 @@ jobs:
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
           zip -r output.zip lib/ bin/ uxplay-windows.bat
+
+      - name: output start path
+        run: |
+          Get-Location
+          Get-ChildItem
           
       - name: uploading artifact
         uses: actions/upload-artifact@v4
