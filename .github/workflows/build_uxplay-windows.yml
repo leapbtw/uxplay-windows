@@ -42,7 +42,7 @@ jobs:
         run: start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
 
       - name: testing if innosetup.exe esists
-        run: Test-Path -Path $(Join-Path -Path $(Get-Location) -ChildPath "iscc.exe") -PathType Leaf
+        run: Test-Path -Path $(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath "iscc.exe") -PathType Leaf
         
       - name: setup msys2
         uses: msys2/setup-msys2@v2
