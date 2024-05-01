@@ -42,6 +42,19 @@ jobs:
 
       - name: setup msys2
         uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            git
+            zip
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-libplist
+            mingw-w64-x86_64-gstreamer
+            mingw-w64-x86_64-gst-plugins-base
+            mingw-w64-x86_64-gst-libav
+            mingw-w64-x86_64-gst-plugins-good
+            mingw-w64-x86_64-gst-plugins-bad
 
       - name: ls c
         run: ls C:\mingw64\bin
