@@ -7,6 +7,12 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      bonjour_sdk_url:
+        description: "Direct URL to BonjourSDKSetup.exe v3.0. Download from https://developer.apple.com/bonjour and upload it somewhere"
+        default: "https://"
+        required: true
+        type: string
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -22,7 +28,21 @@ jobs:
     
       - name: clone the repo
         uses: actions/checkout@v4
+
+      - name: Download Bonjour
+        env:
+          BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
+        run: Invoke-WebRequest -Uri $BONJOUR_URL -OutFile bonjoursdksetup.exe
         
+      - name: install 7-zip
+        run: winget install 7zip.7zip
+
+      - name: check bonjour
+        run: ls
+
+      - name: extract bonjour
+        run: .'C:\Program Files\7-Zip\7z.exe' -tcab x bonjoursdksetup.exe
+
       # the SDK requires the normal version of Bonjour to be installed first.
       - name: install Bonjour (64 bit)
         run: |
