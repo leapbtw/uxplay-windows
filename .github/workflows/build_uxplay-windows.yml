@@ -1,11 +1,5 @@
-# This is a basic workflow to help you get started with Actions
-
 name: build uxplay for windows
-
-# Controls when the workflow will run
 on:
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
       bonjour_sdk_url:
@@ -14,52 +8,43 @@ on:
         required: true
         type: string
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
     name: build uxplay
-    # The type of runner that the job will run on
     runs-on: windows-latest    
     permissions:
       contents: write
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
     
+    steps:
       - name: clone the repo
         uses: actions/checkout@v4
 
-      - name: download Bonjour
-        env:
-          BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
-        run: Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
-        
       - name: download & install 7zip
         run: | 
           Invoke-WebRequest -Uri https://7-zip.org/a/7z2301-x64.exe -OutFile 7zip.exe
           .\7zip.exe /S
-
-      - name: extract Bonjour .exe into the .msi(s)
-        run: .'C:\Program Files\7-Zip\7z.exe' -tcab x bonjoursdksetup.exe
-
-      # the SDK requires the normal version of Bonjour to be installed first.
-      - name: install Bonjour (64 bit)
+          
+      - name: download & install Inno Setup
         run: |
-          $currentPath = Get-Location
-          $msiFilePath = Join-Path -Path $currentPath -ChildPath "Bonjour64.msi"
-          $msiexecArguments = "/i `"$msiFilePath`" /qn /L*v bonjour64.log"
-          Start-Process msiexec -ArgumentList $msiexecArguments -NoNewWindow -Wait
-      - name: install Bonjour SDK (64 bit)
+          Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
+          start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
+
+      # downloads BonjourSDKSetup.exe from the URL provided, extracts it into the multiple .msi(s),
+      #    installs the runtime and then the SDK (both neeeded, in this order)
+      - name: download & install Bonjour
+        env:
+          BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
         run: |
-          $msiexecArguments = "/i $(Join-Path -Path $(Get-Location) -ChildPath "BonjourSDK64.msi") /qn /L*v bonjoursdk64.log"
-          Start-Process msiexec -ArgumentList $msiexecArguments -NoNewWindow -Wait
+          Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
+          .'C:\Program Files\7-Zip\7z.exe' -tcab x bonjoursdksetup.exe
+          
+          $bonjour64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "Bonjour64.msi") /qn /L*v bonjour64.log"
+          Start-Process msiexec -ArgumentList $bonjour64args -NoNewWindow -Wait
+          
+          $bonjourSDK64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "BonjourSDK64.msi") /qn /L*v bonjoursdk64.log"
+          Start-Process msiexec -ArgumentList $bonjourSDK64args -NoNewWindow -Wait
 
-      - name: downloading Inno Setup
-        run: Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
-      - name: installing Inno Setup
-        run: start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
-
-      - name: setup msys2
+      - name: download & install msys2 + build dependencies
         uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -76,7 +61,7 @@ jobs:
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
 
-      - name: building (finally)
+      - name: compiling uxplay (finally)
         shell: msys2 {0}
         run: |
           git clone https://github.com/FDH2/UxPlay && cd UxPlay
