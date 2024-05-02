@@ -29,18 +29,18 @@ jobs:
       - name: clone the repo
         uses: actions/checkout@v4
 
-      - name: Download Bonjour
+      - name: download Bonjour
         env:
           BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
         run: Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
         
-      - name: install 7-zip
-        run: winget install 7zip.7zip
+      - name: download & install 7zip
+        run: | 
+          Invoke-WebRequest -Uri https://7-zip.org/a/7z2301-x64.exe -OutFile 7zip.exe
+          .\7zip.exe /S
+          Remove-Item 7zip.exe
 
-      - name: check bonjour
-        run: ls
-
-      - name: extract bonjour
+      - name: extract Bonjour .exe into the .msi(s)
         run: .'C:\Program Files\7-Zip\7z.exe' -tcab x bonjoursdksetup.exe
 
       # the SDK requires the normal version of Bonjour to be installed first.
