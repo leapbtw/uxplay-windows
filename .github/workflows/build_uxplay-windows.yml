@@ -38,7 +38,6 @@ jobs:
         run: | 
           Invoke-WebRequest -Uri https://7-zip.org/a/7z2301-x64.exe -OutFile 7zip.exe
           .\7zip.exe /S
-          Remove-Item 7zip.exe
 
       - name: extract Bonjour .exe into the .msi(s)
         run: .'C:\Program Files\7-Zip\7z.exe' -tcab x bonjoursdksetup.exe
