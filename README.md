@@ -1,4 +1,5 @@
-# AirPlay to your Windows PC
+# FREE AirPlay to your Windows PC
+Free as both in "freedom" and "free beer"!
 
 ## Installation
 1. Install the latest version of `Bonjour SDK for Windows` from the [Apple Developer website](https://developer.apple.com/bonjour/).
