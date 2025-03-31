@@ -1,0 +1,7 @@
+## Building from Source
+This project also provides GitHub Actions to let you compile the software yourself easily. Follow these steps:
+
+1. Fork the repo.
+2. Download and install the latest version of [Bonjour SDK for Windows](https://developer.apple.com/bonjour/).
+3. Upload the `bonjoursdksetup.exe` to a cloud storage service and get the **direct URL** for the file.
+4. Provide the direct URL to the GitHub Action, which will handle the rest.
