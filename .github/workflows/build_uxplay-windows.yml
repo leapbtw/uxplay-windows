@@ -76,6 +76,9 @@ jobs:
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+      
       - name: compile the installer with inno setup
         run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') $(Join-Path -Path $(Get-Location) -ChildPath "script.iss")
       
