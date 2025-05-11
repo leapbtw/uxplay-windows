@@ -2,7 +2,7 @@
 Free as both in "freedom" and "free beer"!
 
 ## Installation
-1. Install the latest version of `Bonjour SDK for Windows` from the [Apple Developer website](https://developer.apple.com/bonjour/).
+1. Install the latest version of `Bonjour SDK for Windows` from the [Apple Developer website](https://developer.apple.com/download/all/?q=Bonjour%20SDK%20for%20Windows).
 2. Download the latest version of uxplay-windows from [**releases**](https://github.com/leapbtw/uxplay-windows/releases/latest).
 
 ## FAQ
