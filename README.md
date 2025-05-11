@@ -10,8 +10,8 @@ Free as both in "freedom" and "free beer"!
 
 [UxPlay](https://github.com/FDH2/UxPlay/) allows you to screen share from your Apple devices to non-Apple ones using AirPlay.
 
-**uxplay-windows** (this project) provides binaries of UxPlay for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging.
-Most other software achieving the same functionality as UxPlay is usually paid and non-free.
+`uxplay-windows` (this project) provides binaries of UxPlay for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging.
+Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
 
 > UxPlay was updated, why isn't uxplay-windows?
 
