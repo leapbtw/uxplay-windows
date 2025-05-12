@@ -28,9 +28,6 @@ jobs:
         run: |
           Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
           start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
         
       # downloads BonjourSDKSetup.exe from the URL provided, extracts it into the multiple .msi(s),
       #    installs the runtime and then the SDK (both neeeded, in this order)
@@ -89,6 +86,7 @@ jobs:
           pyinstaller --noconsole --onedir --clean --name uxplay-windows --icon=icon.ico tray.py
 
           cp -r D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact\* D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\_internal
+          cp D:\a\uxplay-windows\uxplay-windows\icon.ico D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\_internal
           
       - name: compile the installer with inno setup
         run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') $(Join-Path -Path $(Get-Location) -ChildPath "script.iss")
@@ -99,3 +97,5 @@ jobs:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
