@@ -17,23 +17,24 @@ After installing, open the software. A new [tray icon](https://www.odu.edu/sites
 Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
 
 > [!IMPORTANT]
-> Why is Windows Defender complaining when installing? ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/main/stuff/defender.png "defender")
+> Why is Windows Defender complaining when installing?
+> 
+> ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/main/stuff/defender.png "defender")
 
-Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.
-
+Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.  
 
 > [!NOTE]
 > UxPlay was updated, why isn't uxplay-windows?
 
 ~As of editing this (31 mar 2025) the upstream version sometime crashes and has a few issues. I'll try to update **uxplay-windows** once everything works correctly. Meanwhile you can always build the software yourself to get a more up-to-date version~
 
-EDIT: (12 may 2025) I am now in the works of updating to the latest version
+EDIT: (12 may 2025) I am now in the works of updating to the latest version  
 
 > [!NOTE]
 > How do I build this software myself?
 
 Please see [BUILDING.md](./BUILDING.md)
-
+#
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
 
