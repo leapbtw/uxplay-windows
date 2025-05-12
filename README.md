@@ -31,7 +31,12 @@ EDIT: (12 may 2025) I am now in the works of updating to the latest version
 > How do I build this software myself?
 
 Please see [BUILDING.md](./BUILDING.md)
-#
+
+
+## TODO
+- remove unnecessary DDLs from the installer
+- explore the use of FOSS Bonjour alternatives
+
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
 
