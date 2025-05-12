@@ -14,7 +14,7 @@ else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Correct file paths
-TRAY_ICON_PATH = os.path.join(BASE_DIR, "tray.png")
+TRAY_ICON_PATH = os.path.join(BASE_DIR, "tray.ico")
 UXPLAY_PATH = os.path.join(BASE_DIR, "bin", "uxplay.exe")
 IMAGE = PIL.Image.open(TRAY_ICON_PATH)
 
