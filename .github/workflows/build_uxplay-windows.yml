@@ -7,6 +7,11 @@ on:
         default: ""
         required: true
         type: string
+      tmate_debug_enabled:
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        default: false
+        required: false
+        type: boolean
 
 jobs:
   build:
@@ -96,6 +101,8 @@ jobs:
         with:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
-
-      - name: Setup tmate session
+          
+      - name: (optinal) Setup tmate session
         uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
+
