@@ -90,11 +90,12 @@ jobs:
 
           cp -r D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact\* D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\_internal
           
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        
       - name: uploading artifact
         uses: actions/upload-artifact@v4
         with:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
