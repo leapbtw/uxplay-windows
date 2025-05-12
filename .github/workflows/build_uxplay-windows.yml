@@ -29,6 +29,9 @@ jobs:
           Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
           start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        
       # downloads BonjourSDKSetup.exe from the URL provided, extracts it into the multiple .msi(s),
       #    installs the runtime and then the SDK (both neeeded, in this order)
       - name: download & install Bonjour
@@ -89,9 +92,6 @@ jobs:
           
       - name: compile the installer with inno setup
         run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') $(Join-Path -Path $(Get-Location) -ChildPath "script.iss")
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
         
       - name: uploading artifact
         uses: actions/upload-artifact@v4
