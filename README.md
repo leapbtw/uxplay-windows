@@ -15,12 +15,18 @@ After installing, open the software. A new [tray icon](https://www.odu.edu/sites
 `uxplay-windows` (this project) provides binaries of UxPlay for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging.
 Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
 
+> [!TIP]
+> *I can't see my PC in AirPlay from my iPhone/iPad/Mac!!!*
+> 1. Check if the server is running: click on the tray icon and restart it
+> 2. Make sure you have [Bojour](https://developer.apple.com/download/all/?q=Bonjour%20SDK%20for%20Windows) installed on your PC
+> 3. Toggle Airplane Mode on your iPhone/iPad/Mac twice and try again
+
 > [!IMPORTANT]
-> Why is Windows Defender complaining when installing?
+> *Why is Windows Defender complaining during installation?*
 > 
 > ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/main/stuff/defender.png "defender")
-
-Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.  
+>
+> Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.  
 
 > UxPlay was updated, why isn't uxplay-windows?
 
