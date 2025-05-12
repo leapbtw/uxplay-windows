@@ -6,8 +6,8 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{02621F03-7F92-4E33-AA17-017F79B31DCF}
 AppName=uxplay-windows
-AppVersion=1.68
-;AppVerName=uxplay-windows 1.68
+AppVersion=1.72
+;AppVerName=uxplay-windows 1.72
 AppPublisher=leapbtw
 AppPublisherURL=https://github.com/leapbtw/uxplay-windows
 AppSupportURL=https://github.com/leapbtw/uxplay-windows
@@ -29,14 +29,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact\uxplay-windows.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\uxplay-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
-Name: "{autoprograms}\uxplay-windows"; Filename: "{app}\uxplay-windows.bat"
-Name: "{autodesktop}\uxplay-windows"; Filename: "{app}\uxplay-windows.bat"; Tasks: desktopicon
+Name: "{autoprograms}\uxplay-windows"; Filename: "{app}\uxplay-windows.exe"
+Name: "{autodesktop}\uxplay-windows"; Filename: "{app}\uxplay-windows.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\uxplay-windows.bat"; Description: "{cm:LaunchProgram,uxplay-windows}"; Flags: shellexec postinstall skipifsilent
+Filename: "{app}\uxplay-windows.exe"; Description: "{cm:LaunchProgram,uxplay-windows}"; Flags: shellexec postinstall skipifsilent
 
