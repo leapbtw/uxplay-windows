@@ -75,15 +75,26 @@ jobs:
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
       
       - name: compile the installer with inno setup
         run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') $(Join-Path -Path $(Get-Location) -ChildPath "script.iss")
-      
+
+      - name: install pyinstaller and dependencies
+        run: |
+          python -m venv ./venv
+          .\venv\Scripts\Activate.ps1
+          python -m pip install --upgrade pip
+          pip install pyinstaller pystray
+
+          pyinstaller --noconsole --onedir --clean --name uxplay-windows --icon=icon.ico tray.py
+
+          cp -r D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact\* D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\_internal
+          
       - name: uploading artifact
         uses: actions/upload-artifact@v4
         with:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
