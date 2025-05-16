@@ -18,7 +18,7 @@ Most other software achieving the same functionality as `uxplay-windows` is usua
 > [!TIP]
 > *I can't see my PC in AirPlay from my iPhone/iPad/Mac!!!*
 > 1. Check if the server is running: click on the tray icon and restart it
-> 2. Make sure you have [Bojour](https://developer.apple.com/download/all/?q=Bonjour%20SDK%20for%20Windows) installed on your PC
+> 2. Make sure you have [Bonjour](https://developer.apple.com/download/all/?q=Bonjour%20SDK%20for%20Windows) installed on your PC
 > 3. Toggle Airplane Mode on your iPhone/iPad/Mac twice and try again
 
 > [!IMPORTANT]
@@ -27,12 +27,6 @@ Most other software achieving the same functionality as `uxplay-windows` is usua
 > ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/main/stuff/defender.png "defender")
 >
 > Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.  
-
-> UxPlay was updated, why isn't uxplay-windows?
-
-~As of editing this (31 mar 2025) the upstream version sometime crashes and has a few issues. I'll try to update **uxplay-windows** once everything works correctly. Meanwhile you can always build the software yourself to get a more up-to-date version~
-
-EDIT: (12 may 2025) I am now in the works of updating to the latest version  
 
 > How do I build this software myself?
 
