@@ -102,7 +102,7 @@ jobs:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
           
-      - name: (optinal) Setup tmate session
+      - name: (optional) Setup tmate session
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
 
