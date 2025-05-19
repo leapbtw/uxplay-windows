@@ -27,6 +27,10 @@ SetupIconFile=D:\a\uxplay-windows\uxplay-windows\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+UninstallDisplayIcon={app}\{#MyAppExeName}
+; Ensure application is closed before uninstall
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -54,6 +58,10 @@ Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Bonjour64.msi"" /qn"; Flags: wa
 
 ; Launch the application after installation
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent
+
+[UninstallRun]
+; This ensures any running instance is closed before uninstallation
+Filename: "{cmd}"; Parameters: "/c taskkill /f /im {#MyAppExeName} 2>nul"; Flags: runhidden
 
 [Code]
 // Function to check if Bonjour is installed by checking registry key
@@ -102,5 +110,77 @@ begin
       Log('Will install Bonjour as part of the setup.')
     else
       Log('Skipping Bonjour installation as it is already installed.');
+  end;
+end;
+
+// Function to handle application closing before uninstall
+function InitializeUninstall(): Boolean;
+var
+  ErrorCode: Integer;
+  ProcessRunning: Boolean;
+  RetryCount: Integer;
+  UninstallBonjour: Boolean;
+begin
+  Result := True;
+  
+  // Check if our application is running and try to close it
+  ProcessRunning := True;
+  RetryCount := 0;
+  
+  while ProcessRunning and (RetryCount < 5) do
+  begin
+    // Try to close the application gracefully first
+    if Exec('taskkill.exe', '/im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode) then
+    begin
+      // Wait a bit for the process to close
+      Sleep(1000);
+      
+      // Check if it's still running
+      ProcessRunning := not Exec('cmd.exe', '/c tasklist | find "{#MyAppExeName}" > nul || exit 0', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode) 
+                         or (ErrorCode <> 0);
+      
+      if ProcessRunning then
+      begin
+        // If still running, try force kill after a few retries
+        if RetryCount >= 2 then
+        begin
+          Exec('taskkill.exe', '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+          Sleep(1000);
+        end;
+      end;
+    end;
+    
+    RetryCount := RetryCount + 1;
+  end;
+  
+  // Ask if user wants to uninstall Bonjour as well
+  if IsBonjourInstalled then
+  begin
+    UninstallBonjour := MsgBox('Would you like to uninstall Bonjour as well?' + #13#10 + 
+                              '(Note: Only uninstall if no other applications need it)',
+                              mbConfirmation, MB_YESNO) = IDYES;
+    
+    if UninstallBonjour then
+    begin
+      // Uninstall Bonjour using msiexec
+      if Exec('msiexec.exe', '/x {00000000-0000-0000-0000-000000000000} /qn', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode) then
+        Log('Bonjour uninstall command executed')
+      else
+        Log('Failed to execute Bonjour uninstall command');
+    end;
+  end;
+  
+  Result := True;
+end;
+
+// Make sure the app directory is completely removed during uninstall
+procedure DeinitializeUninstall();
+var
+  AppDir: String;
+begin
+  AppDir := ExpandConstant('{app}');
+  if DirExists(AppDir) then
+  begin
+    DelTree(AppDir, True, True, True);
   end;
 end;
