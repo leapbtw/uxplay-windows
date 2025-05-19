@@ -28,9 +28,11 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
-; Ensure application is closed before uninstall
-CloseApplications=yes
+; Enhanced uninstall settings
+CloseApplications=force
 RestartApplications=no
+; This setting allows us to handle everything in the uninstall process
+UninstallRestartComputer=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -60,8 +62,16 @@ Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Bonjour64.msi"" /qn"; Flags: wa
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent
 
 [UninstallRun]
-; This ensures any running instance is closed before uninstallation
-Filename: "{cmd}"; Parameters: "/c taskkill /f /im {#MyAppExeName} 2>nul"; Flags: runhidden
+; First terminate any running instances more aggressively
+Filename: "taskkill.exe"; Parameters: "/f /im {#MyAppExeName}"; Flags: runhidden skipifdoesntexist
+
+[InstallDelete]
+; Clean up any leftover files during installation/reinstallation
+Type: filesandordirs; Name: "{app}"
+
+[UninstallDelete]
+; Make absolutely sure we delete everything during uninstall
+Type: filesandordirs; Name: "{app}"
 
 [Code]
 // Function to check if Bonjour is installed by checking registry key
@@ -113,44 +123,56 @@ begin
   end;
 end;
 
-// Function to handle application closing before uninstall
+// Helper function to check if a process is running
+function IsProcessRunning(const ProcessName: string): Boolean;
+var
+  ResultCode: Integer;
+begin
+  // Using tasklist to check if process is running, redirecting output to nul
+  // Exit code 0 means process was found, 1 means it wasn't
+  if Exec('cmd.exe', '/c tasklist /FI "IMAGENAME eq ' + ProcessName + '" /NH | find "' + ProcessName + '" > nul', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Result := (ResultCode = 0)
+  else
+    Result := False; // If command failed, assume process is not running
+end;
+
+// Function to terminate a process
+function TerminateProcess(const ProcessName: string; ForceTerminate: Boolean): Boolean;
+var
+  ResultCode: Integer;
+  Params: string;
+begin
+  if ForceTerminate then
+    Params := '/f /im ' + ProcessName
+  else
+    Params := '/im ' + ProcessName;
+    
+  Result := Exec('taskkill.exe', Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+// Function to handle uninstallation initialization
 function InitializeUninstall(): Boolean;
 var
-  ErrorCode: Integer;
-  ProcessRunning: Boolean;
-  RetryCount: Integer;
   UninstallBonjour: Boolean;
 begin
   Result := True;
   
-  // Check if our application is running and try to close it
-  ProcessRunning := True;
-  RetryCount := 0;
-  
-  while ProcessRunning and (RetryCount < 5) do
+  // First check if our app is running and terminate it with increasing force
+  if IsProcessRunning('{#MyAppExeName}') then
   begin
-    // Try to close the application gracefully first
-    if Exec('taskkill.exe', '/im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode) then
-    begin
-      // Wait a bit for the process to close
-      Sleep(1000);
-      
-      // Check if it's still running
-      ProcessRunning := not Exec('cmd.exe', '/c tasklist | find "{#MyAppExeName}" > nul || exit 0', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode) 
-                         or (ErrorCode <> 0);
-      
-      if ProcessRunning then
-      begin
-        // If still running, try force kill after a few retries
-        if RetryCount >= 2 then
-        begin
-          Exec('taskkill.exe', '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
-          Sleep(1000);
-        end;
-      end;
-    end;
+    Log('Application is running. Attempting to close it gracefully...');
+    TerminateProcess('{#MyAppExeName}', False);
     
-    RetryCount := RetryCount + 1;
+    // Wait a bit for the application to close
+    Sleep(1000);
+    
+    // If still running, force kill
+    if IsProcessRunning('{#MyAppExeName}') then
+    begin
+      Log('Application still running. Forcing termination...');
+      TerminateProcess('{#MyAppExeName}', True);
+      Sleep(2000); // Wait longer after forced termination
+    end;
   end;
   
   // Ask if user wants to uninstall Bonjour as well
@@ -159,28 +181,55 @@ begin
     UninstallBonjour := MsgBox('Would you like to uninstall Bonjour as well?' + #13#10 + 
                               '(Note: Only uninstall if no other applications need it)',
                               mbConfirmation, MB_YESNO) = IDYES;
-    
+                              
     if UninstallBonjour then
     begin
-      // Uninstall Bonjour using msiexec
-      if Exec('msiexec.exe', '/x {00000000-0000-0000-0000-000000000000} /qn', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode) then
-        Log('Bonjour uninstall command executed')
+      Log('User chose to uninstall Bonjour. Executing uninstaller...');
+      // Get the Bonjour uninstall string from registry
+      // This approach is more reliable than hardcoding a GUID
+      if Exec('wmic', 'product where "name like ''Bonjour''" call uninstall /nointeractive', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+        Log('Bonjour uninstall command executed successfully')
       else
         Log('Failed to execute Bonjour uninstall command');
     end;
   end;
-  
-  Result := True;
 end;
 
-// Make sure the app directory is completely removed during uninstall
-procedure DeinitializeUninstall();
+// Function to handle post-uninstall cleanup, ensuring all files are removed
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  AppDir: String;
+  AppPath: string;
 begin
-  AppDir := ExpandConstant('{app}');
-  if DirExists(AppDir) then
+  if CurUninstallStep = usPostUninstall then
   begin
-    DelTree(AppDir, True, True, True);
+    AppPath := ExpandConstant('{app}');
+    
+    // Double-check if the directory still exists
+    if DirExists(AppPath) then
+    begin
+      Log('Application directory still exists after uninstall. Attempting final cleanup...');
+      
+      // Make sure no processes are locking the directory
+      if IsProcessRunning('{#MyAppExeName}') then
+      begin
+        Log('Application process still found. Forcing termination...');
+        TerminateProcess('{#MyAppExeName}', True);
+        Sleep(3000); // Wait even longer to ensure process is fully terminated
+      end;
+      
+      // Final attempt to remove the directory
+      if not DelTree(AppPath, True, True, True) then
+      begin
+        Log('Failed to remove directory using DelTree. Attempting with cmd...');
+        // Try with RD command which sometimes works better
+        Exec('cmd.exe', '/c rd /s /q "' + AppPath + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      end;
+      
+      // Inform user if we couldn't remove everything
+      if DirExists(AppPath) then
+        Log('WARNING: Could not completely remove application directory.')
+      else
+        Log('Application directory successfully removed.');
+    end;
   end;
 end;
