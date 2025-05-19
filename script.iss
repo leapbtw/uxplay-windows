@@ -155,8 +155,8 @@ begin
   Result := Exec('taskkill.exe', Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
-// Function to handle uninstallation initialization
-function InitializeUninstall: Boolean;
+// Function to find and uninstall Bonjour
+procedure UninstallBonjourIfRequested;
 var
   UninstallBonjour: Boolean;
   ResultCode: Integer;
@@ -168,42 +168,6 @@ var
   UninstallRoot: String;
   UninstallKeys: array of String;
 begin
-  Result := True;
-  
-  // First check if our app is running and terminate it with increasing force
-  if IsProcessRunning('{#MyAppExeName}') then
-  begin
-    Log('Application is running. Attempting to close it gracefully...');
-    TerminateProcess('{#MyAppExeName}', False);
-    
-    // Wait a bit for the application to close
-    Sleep(1000);
-    
-    // If still running, force kill
-    if IsProcessRunning('{#MyAppExeName}') then
-    begin
-      Log('Application still running. Forcing termination...');
-      TerminateProcess('{#MyAppExeName}', True);
-      Sleep(2000); // Wait longer after forced termination
-    end;
-  end;
-  
-  // Also check for uxplay.exe process and terminate if needed
-  if IsProcessRunning('uxplay.exe') then
-  begin
-    Log('uxplay.exe is running. Attempting to close it...');
-    TerminateProcess('uxplay.exe', False);
-    
-    Sleep(1000);
-    
-    if IsProcessRunning('uxplay.exe') then
-    begin
-      Log('uxplay.exe still running. Forcing termination...');
-      TerminateProcess('uxplay.exe', True);
-      Sleep(2000);
-    end;
-  end;
-  
   // Ask if user wants to uninstall Bonjour as well
   if IsBonjourInstalled then
   begin
@@ -308,6 +272,49 @@ begin
       end;
     end;
   end;
+end;
+
+// Function to handle uninstallation initialization
+function InitializeUninstall: Boolean;
+begin
+  Result := True;
+  
+  // First check if our app is running and terminate it with increasing force
+  if IsProcessRunning('{#MyAppExeName}') then
+  begin
+    Log('Application is running. Attempting to close it gracefully...');
+    TerminateProcess('{#MyAppExeName}', False);
+    
+    // Wait a bit for the application to close
+    Sleep(1000);
+    
+    // If still running, force kill
+    if IsProcessRunning('{#MyAppExeName}') then
+    begin
+      Log('Application still running. Forcing termination...');
+      TerminateProcess('{#MyAppExeName}', True);
+      Sleep(2000); // Wait longer after forced termination
+    end;
+  end;
+  
+  // Also check for uxplay.exe process and terminate if needed
+  if IsProcessRunning('uxplay.exe') then
+  begin
+    Log('uxplay.exe is running. Attempting to close it...');
+    TerminateProcess('uxplay.exe', False);
+    
+    Sleep(1000);
+    
+    if IsProcessRunning('uxplay.exe') then
+    begin
+      Log('uxplay.exe still running. Forcing termination...');
+      TerminateProcess('uxplay.exe', True);
+      Sleep(2000);
+    end;
+  end;
+  
+  // Handle Bonjour uninstallation in a separate procedure
+  UninstallBonjourIfRequested;
 end;
 
 // Function to handle post-uninstall cleanup, ensuring all files are removed
