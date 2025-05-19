@@ -48,10 +48,6 @@ Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\*"; DestDir: "{a
 ; Temporary files for Bonjour installation if needed
 Source: "{tmp}\BonjourPSSetup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall external; ExternalSize: 2000000; Check: not IsBonjourInstalled
 
-[Messages]
-; Custom message for Bonjour installation requirements
-BonjourRequired=UXPlay requires Bonjour for AirPlay functionality. Bonjour will be installed during setup.
-
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
@@ -101,7 +97,7 @@ begin
   if not IsBonjourInstalled then
   begin
     // Show custom message about Bonjour requirement
-    MsgBox(ExpandConstant('{cm:BonjourRequired}'), mbInformation, MB_OK);
+    MsgBox('UXPlay requires Bonjour for AirPlay functionality. Bonjour will be installed during setup.', mbInformation, MB_OK);
     
     DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), 'Downloading Bonjour (required for AirPlay functionality)', nil);
     
@@ -163,9 +159,14 @@ end;
 function InitializeUninstall(): Boolean;
 var
   UninstallBonjour: Boolean;
-  ResultCode: Integer;  // Added ResultCode variable declaration
-  MsiExecParams: String;
-  BonjourProductCode: String;
+  ResultCode: Integer;
+  BonjourUninstall: String;
+  BonjourDisplayName: String;
+  BonjourGUID: String;
+  Index: Integer;
+  FindRec: TFindRec;
+  UninstallRoot: String;
+  UninstallKeys: array of String;
 begin
   Result := True;
   
@@ -212,46 +213,98 @@ begin
                               
     if UninstallBonjour then
     begin
-      Log('User chose to uninstall Bonjour. Executing uninstaller...');
+      Log('User chose to uninstall Bonjour. Looking for uninstaller...');
       
-      // Try to get the Bonjour product code from registry
-      if RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Bonjour', 'UninstallString', BonjourProductCode) or
-         RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Bonjour', 'UninstallString', BonjourProductCode) then
+      // Define the registry paths we need to check
+      SetArrayLength(UninstallKeys, 2);
+      UninstallKeys[0] := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall';
+      UninstallKeys[1] := 'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall';
+      
+      BonjourGUID := '';
+      
+      // Search through potential registry locations
+      for Index := 0 to GetArrayLength(UninstallKeys) - 1 do
       begin
-        // Extract product code from the uninstall string if found
-        Log('Found Bonjour uninstall string: ' + BonjourProductCode);
-        
-        // Most MSI uninstall strings look like: MsiExec.exe /I{PRODUCT-CODE}
-        // We need to extract the product code and change /I to /X for uninstall
-        if Pos('/I{', BonjourProductCode) > 0 then
+        UninstallRoot := UninstallKeys[Index];
+        if RegGetSubkeyNames(HKEY_LOCAL_MACHINE, UninstallRoot, FindRec) then
         begin
-          Delete(BonjourProductCode, 1, Pos('/I{', BonjourProductCode) + 1); // Remove "MsiExec.exe /I"
-          if Pos('}', BonjourProductCode) > 0 then
+          repeat
+            // Check if this entry is Bonjour
+            if RegQueryStringValue(HKEY_LOCAL_MACHINE, UninstallRoot + '\' + FindRec.Name, 'DisplayName', BonjourDisplayName) then
+            begin
+              if (Pos('Bonjour', BonjourDisplayName) > 0) or (Pos('BONJOUR', BonjourDisplayName) > 0) or (Pos('bonjour', BonjourDisplayName) > 0) then
+              begin
+                BonjourGUID := FindRec.Name;
+                Log('Found Bonjour GUID: ' + BonjourGUID);
+                Break;
+              end;
+            end;
+          until not RegNextKey(FindRec);
+          RegCloseKey(FindRec.Handle);
+          
+          if BonjourGUID <> '' then
+            Break;
+        end;
+      end;
+      
+      // If we found the GUID, run the uninstaller
+      if BonjourGUID <> '' then
+      begin
+        // Get uninstall string
+        if RegQueryStringValue(HKEY_LOCAL_MACHINE, UninstallRoot + '\' + BonjourGUID, 'UninstallString', BonjourUninstall) then
+        begin
+          Log('Found Bonjour uninstall command: ' + BonjourUninstall);
+          
+          // Check if it's an MSI uninstall
+          if Pos('MsiExec.exe', BonjourUninstall) > 0 then
           begin
-            BonjourProductCode := Copy(BonjourProductCode, 1, Pos('}', BonjourProductCode));
-            Log('Extracted Bonjour product code: ' + BonjourProductCode);
+            // Modify to make it quiet
+            if Pos('/I', BonjourUninstall) > 0 then
+              StringChangeEx(BonjourUninstall, '/I', '/X', True);
+              
+            BonjourUninstall := BonjourUninstall + ' /qn';
+            Log('Running uninstall command: ' + BonjourUninstall);
             
-            // Build the uninstall command with quiet options
-            MsiExecParams := '/X' + BonjourProductCode + ' /qn';
-            Log('Running msiexec with params: ' + MsiExecParams);
-            
-            // Run the uninstaller with proper parameters
-            if Exec('msiexec.exe', MsiExecParams, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-              Log('Bonjour uninstall command executed successfully with code: ' + IntToStr(ResultCode))
-            else
-              Log('Failed to execute Bonjour uninstall command');
+            if not Exec(ExpandConstant('{sys}\cmd.exe'), '/c ' + BonjourUninstall, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+            begin
+              Log('Failed to run Bonjour uninstaller via cmd. Trying direct execution.');
+              if not Exec('msiexec.exe', '/X' + BonjourGUID + ' /qn', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+                Log('Failed to uninstall Bonjour with msiexec directly')
+              else
+                Log('Bonjour uninstalled with direct msiexec. Exit code: ' + IntToStr(ResultCode));
+            end else
+              Log('Bonjour uninstall command executed. Exit code: ' + IntToStr(ResultCode));
           end else
-            Log('Could not parse product code properly');
+          begin
+            // Not MSI, try to execute the uninstall string directly
+            Log('Non-MSI uninstall string detected. Trying to execute directly.');
+            if not Exec(BonjourUninstall, '', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+              Log('Failed to execute Bonjour uninstaller')
+            else
+              Log('Bonjour uninstaller executed. Exit code: ' + IntToStr(ResultCode));
+          end;
         end else
-          Log('Uninstall string format not recognized');
+          Log('Could not find Bonjour uninstall string in registry');
       end else
       begin
-        // Fallback method using wmic
-        Log('Could not find Bonjour uninstall info in registry. Trying wmic method...');
-        if Exec('wmic', 'product where "name like ''%Bonjour%''" call uninstall /nointeractive', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-          Log('Bonjour uninstall command executed successfully with wmic')
+        // Fallback to alternative methods
+        Log('Could not find Bonjour registry entry. Trying alternative methods.');
+        
+        // Try msiexec with known Bonjour product codes
+        if not Exec('msiexec.exe', '/X{94D02855-73F8-4133-A80D-1EEBB412A487} /qn', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+          Log('Failed to uninstall Bonjour using default product code.')
         else
-          Log('Failed to execute Bonjour uninstall command with wmic');
+          Log('Attempted Bonjour uninstall with known product code. Exit code: ' + IntToStr(ResultCode));
+          
+        // Last resort: try wmic approach
+        if Exec('wmic', 'product where "name like ''%Bonjour%''" call uninstall /nointeractive', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+          Log('Bonjour uninstall command executed via wmic. Exit code: ' + IntToStr(ResultCode))
+        else
+          Log('Failed to execute Bonjour uninstall command via wmic');
+          
+        // Also try mdss variant just in case
+        if Exec('wmic', 'product where "name like ''%mdns%''" call uninstall /nointeractive', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+          Log('mDNS uninstall command executed via wmic. Exit code: ' + IntToStr(ResultCode));
       end;
     end;
   end;
