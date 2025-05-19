@@ -64,6 +64,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [UninstallRun]
 ; First terminate any running instances more aggressively
 Filename: "taskkill.exe"; Parameters: "/f /im {#MyAppExeName}"; Flags: runhidden skipifdoesntexist
+Filename: "taskkill.exe"; Parameters: "/f /im uxplay.exe"; Flags: runhidden skipifdoesntexist
 
 [InstallDelete]
 ; Clean up any leftover files during installation/reinstallation
@@ -216,6 +217,7 @@ begin
       begin
         Log('Application process still found. Forcing termination...');
         TerminateProcess('{#MyAppExeName}', True);
+        TerminateProcess('uxplay.exe', True);
         Sleep(3000); // Wait even longer to ensure process is fully terminated
       end;
       
