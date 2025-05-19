@@ -154,6 +154,7 @@ end;
 function InitializeUninstall(): Boolean;
 var
   UninstallBonjour: Boolean;
+  ResultCode: Integer;  // Added ResultCode variable declaration
 begin
   Result := True;
   
@@ -199,6 +200,7 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   AppPath: string;
+  ResultCode: Integer;  // Added ResultCode variable declaration
 begin
   if CurUninstallStep = usPostUninstall then
   begin
