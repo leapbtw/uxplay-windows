@@ -156,7 +156,7 @@ begin
 end;
 
 // Function to handle uninstallation initialization
-function InitializeUninstall(): Boolean;
+function InitializeUninstall: Boolean;
 var
   UninstallBonjour: Boolean;
   ResultCode: Integer;
@@ -314,7 +314,7 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   AppPath: string;
-  ResultCode: Integer;  // Added ResultCode variable declaration
+  ResultCode: Integer;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
