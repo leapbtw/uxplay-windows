@@ -48,15 +48,19 @@ Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\*"; DestDir: "{a
 ; Temporary files for Bonjour installation if needed
 Source: "{tmp}\BonjourPSSetup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall external; ExternalSize: 2000000; Check: not IsBonjourInstalled
 
+[Messages]
+; Custom message for Bonjour installation requirements
+BonjourRequired=UXPlay requires Bonjour for AirPlay functionality. Bonjour will be installed during setup.
+
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 ; Install Bonjour if not already installed
-Filename: "{tmp}\BonjourPSSetup.exe"; Parameters: "/extract"; Flags: waituntilterminated runhidden; Check: not IsBonjourInstalled
+Filename: "{tmp}\BonjourPSSetup.exe"; Parameters: "/extract"; Flags: waituntilterminated runhidden; Check: not IsBonjourInstalled; StatusMsg: "Preparing Bonjour installation (required for AirPlay)..."
 Filename: "cmd.exe"; Parameters: "/c expand ""{tmp}\BonjourPS.msi"" -F:* ""{tmp}"""; Flags: waituntilterminated runhidden; Check: not IsBonjourInstalled
-Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Bonjour64.msi"" /qn"; Flags: waituntilterminated; StatusMsg: "Installing Bonjour..."; Check: not IsBonjourInstalled
+Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Bonjour64.msi"" /qn"; Flags: waituntilterminated; StatusMsg: "Installing Bonjour (required for AirPlay)..."; Check: not IsBonjourInstalled
 
 ; Launch the application after installation
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent
@@ -64,6 +68,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [UninstallRun]
 ; First terminate any running instances more aggressively
 Filename: "taskkill.exe"; Parameters: "/f /im {#MyAppExeName}"; Flags: runhidden skipifdoesntexist
+; Also terminate uxplay.exe which might be a separate process
 Filename: "taskkill.exe"; Parameters: "/f /im uxplay.exe"; Flags: runhidden skipifdoesntexist
 
 [InstallDelete]
@@ -95,7 +100,10 @@ begin
   // If Bonjour is not installed, download the installer
   if not IsBonjourInstalled then
   begin
-    DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), nil);
+    // Show custom message about Bonjour requirement
+    MsgBox(ExpandConstant('{cm:BonjourRequired}'), mbInformation, MB_OK);
+    
+    DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), 'Downloading Bonjour (required for AirPlay functionality)', nil);
     
     DownloadPage.Add('https://download.info.apple.com/Mac_OS_X/061-8098.20100603.gthyu/BonjourPSSetup.exe', 'BonjourPSSetup.exe', '');
     DownloadPage.Show;
@@ -118,7 +126,7 @@ begin
   if CurStep = ssInstall then
   begin
     if not IsBonjourInstalled then
-      Log('Will install Bonjour as part of the setup.')
+      Log('Will install Bonjour as part of the setup as it is required for AirPlay functionality.')
     else
       Log('Skipping Bonjour installation as it is already installed.');
   end;
@@ -156,6 +164,8 @@ function InitializeUninstall(): Boolean;
 var
   UninstallBonjour: Boolean;
   ResultCode: Integer;  // Added ResultCode variable declaration
+  MsiExecParams: String;
+  BonjourProductCode: String;
 begin
   Result := True;
   
@@ -177,6 +187,22 @@ begin
     end;
   end;
   
+  // Also check for uxplay.exe process and terminate if needed
+  if IsProcessRunning('uxplay.exe') then
+  begin
+    Log('uxplay.exe is running. Attempting to close it...');
+    TerminateProcess('uxplay.exe', False);
+    
+    Sleep(1000);
+    
+    if IsProcessRunning('uxplay.exe') then
+    begin
+      Log('uxplay.exe still running. Forcing termination...');
+      TerminateProcess('uxplay.exe', True);
+      Sleep(2000);
+    end;
+  end;
+  
   // Ask if user wants to uninstall Bonjour as well
   if IsBonjourInstalled then
   begin
@@ -187,12 +213,46 @@ begin
     if UninstallBonjour then
     begin
       Log('User chose to uninstall Bonjour. Executing uninstaller...');
-      // Get the Bonjour uninstall string from registry
-      // This approach is more reliable than hardcoding a GUID
-      if Exec('wmic', 'product where "name like ''Bonjour''" call uninstall /nointeractive', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-        Log('Bonjour uninstall command executed successfully')
-      else
-        Log('Failed to execute Bonjour uninstall command');
+      
+      // Try to get the Bonjour product code from registry
+      if RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Bonjour', 'UninstallString', BonjourProductCode) or
+         RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Bonjour', 'UninstallString', BonjourProductCode) then
+      begin
+        // Extract product code from the uninstall string if found
+        Log('Found Bonjour uninstall string: ' + BonjourProductCode);
+        
+        // Most MSI uninstall strings look like: MsiExec.exe /I{PRODUCT-CODE}
+        // We need to extract the product code and change /I to /X for uninstall
+        if Pos('/I{', BonjourProductCode) > 0 then
+        begin
+          Delete(BonjourProductCode, 1, Pos('/I{', BonjourProductCode) + 1); // Remove "MsiExec.exe /I"
+          if Pos('}', BonjourProductCode) > 0 then
+          begin
+            BonjourProductCode := Copy(BonjourProductCode, 1, Pos('}', BonjourProductCode));
+            Log('Extracted Bonjour product code: ' + BonjourProductCode);
+            
+            // Build the uninstall command with quiet options
+            MsiExecParams := '/X' + BonjourProductCode + ' /qn';
+            Log('Running msiexec with params: ' + MsiExecParams);
+            
+            // Run the uninstaller with proper parameters
+            if Exec('msiexec.exe', MsiExecParams, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+              Log('Bonjour uninstall command executed successfully with code: ' + IntToStr(ResultCode))
+            else
+              Log('Failed to execute Bonjour uninstall command');
+          end else
+            Log('Could not parse product code properly');
+        end else
+          Log('Uninstall string format not recognized');
+      end else
+      begin
+        // Fallback method using wmic
+        Log('Could not find Bonjour uninstall info in registry. Trying wmic method...');
+        if Exec('wmic', 'product where "name like ''%Bonjour%''" call uninstall /nointeractive', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+          Log('Bonjour uninstall command executed successfully with wmic')
+        else
+          Log('Failed to execute Bonjour uninstall command with wmic');
+      end;
     end;
   end;
 end;
@@ -217,8 +277,15 @@ begin
       begin
         Log('Application process still found. Forcing termination...');
         TerminateProcess('{#MyAppExeName}', True);
-        TerminateProcess('uxplay.exe', True);
         Sleep(3000); // Wait even longer to ensure process is fully terminated
+      end;
+      
+      // Also check for uxplay.exe process again
+      if IsProcessRunning('uxplay.exe') then
+      begin
+        Log('uxplay.exe process still found. Forcing termination...');
+        TerminateProcess('uxplay.exe', True);
+        Sleep(3000);
       end;
       
       // Final attempt to remove the directory
