@@ -365,8 +365,7 @@ begin
     // Ask user if they want to uninstall Bonjour as well
     if IsBonjourInstalled() then
     begin
-      UninstallBonjourResult := MsgBox('uxplay-windows has been uninstalled.' + #13#10#13#10 +
-                                       'Would you also like to uninstall Bonjour Services?' + #13#10#13#10 +
+      UninstallBonjourResult := MsgBox('Would you also like to uninstall Bonjour Services?' + #13#10#13#10 +
                                        'Note: Other applications may depend on Bonjour Services. ' +
                                        'Only uninstall it if you are sure no other applications need it.',
                                        mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
