@@ -17,7 +17,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputBaseFilename=uxplay-windows
-SetupIconFile=D:\a\uxplay-windows\uxplay-windows\icon.ico
+SetupIconFile=Z:\a\uxplay-windows\uxplay-windows\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -29,8 +29,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\uxplay-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "Z:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\uxplay-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Z:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
@@ -46,6 +46,7 @@ Filename: "{app}\uxplay-windows.exe"; Description: "{cm:LaunchProgram,uxplay-win
 const
   TH32CS_SNAPPROCESS = $00000002;
   PROCESS_TERMINATE = $0001;
+  INVALID_HANDLE_VALUE = $FFFFFFFF;
 
 // Type declarations
 type
@@ -95,32 +96,51 @@ var
   ExeName: String;
 begin
   Result := False;
-  hSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if hSnapshot <> -1 then
+  
+  // Try-catch the entire function to prevent runtime errors
   try
-    ProcessEntry.dwSize := SizeOf(ProcessEntry);
-    Found := Process32First(hSnapshot, ProcessEntry);
-    while Found do
+    hSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if hSnapshot = INVALID_HANDLE_VALUE then
     begin
-      // Manually convert szExeFile (array of Char) to String
-      ExeName := '';
-      for i := 0 to SizeOf(ProcessEntry.szExeFile) - 1 do
-      begin
-        if ProcessEntry.szExeFile[i] = #0 then
-          Break;
-        ExeName := ExeName + ProcessEntry.szExeFile[i];
-      end;
-
-      if CompareText(ExeName, ProcessName) = 0 then
-      begin
-        Result := True;
-        Break;
-      end;
-      
-      Found := Process32Next(hSnapshot, ProcessEntry);
+      Log('Failed to create process snapshot');
+      Exit;
     end;
-  finally
-    CloseHandle(hSnapshot);
+    
+    try
+      ProcessEntry.dwSize := SizeOf(ProcessEntry);
+      Found := Process32First(hSnapshot, ProcessEntry);
+      while Found do
+      begin
+        // Safely convert szExeFile to String
+        ExeName := '';
+        try
+          for i := 0 to 259 do
+          begin
+            if ProcessEntry.szExeFile[i] = #0 then
+              Break;
+            ExeName := ExeName + ProcessEntry.szExeFile[i];
+          end;
+        except
+          // If string conversion fails, skip this entry
+          Found := Process32Next(hSnapshot, ProcessEntry);
+          Continue;
+        end;
+
+        if CompareText(ExeName, ProcessName) = 0 then
+        begin
+          Result := True;
+          Break;
+        end;
+        
+        Found := Process32Next(hSnapshot, ProcessEntry);
+      end;
+    finally
+      CloseHandle(hSnapshot);
+    end;
+  except
+    // If any error occurs, just return False
+    Log('Exception in IsProcessRunning: ' + GetExceptionMessage);
+    Result := False;
   end;
 end;
 
@@ -135,38 +155,54 @@ var
   ExeName: String;
 begin
   Result := False;
-  hSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if hSnapshot <> -1 then
+  
   try
-    ProcessEntry.dwSize := SizeOf(ProcessEntry);
-    Found := Process32First(hSnapshot, ProcessEntry);
-    while Found do
+    hSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if hSnapshot = INVALID_HANDLE_VALUE then
     begin
-      // Convert szExeFile to String
-      ExeName := '';
-      for i := 0 to SizeOf(ProcessEntry.szExeFile) - 1 do
-      begin
-        if ProcessEntry.szExeFile[i] = #0 then
-          Break;
-        ExeName := ExeName + ProcessEntry.szExeFile[i];
-      end;
-
-      if CompareText(ExeName, ProcessName) = 0 then
-      begin
-        hProcess := OpenProcess(PROCESS_TERMINATE, False, ProcessEntry.th32ProcessID);
-        if hProcess <> 0 then
-        try
-          Result := TerminateProcess(hProcess, 1);
-        finally
-          CloseHandle(hProcess);
-        end;
-        if Result then
-          Break;
-      end;
-      Found := Process32Next(hSnapshot, ProcessEntry);
+      Log('Failed to create process snapshot for termination');
+      Exit;
     end;
-  finally
-    CloseHandle(hSnapshot);
+    
+    try
+      ProcessEntry.dwSize := SizeOf(ProcessEntry);
+      Found := Process32First(hSnapshot, ProcessEntry);
+      while Found do
+      begin
+        // Safely convert szExeFile to String
+        ExeName := '';
+        try
+          for i := 0 to 259 do
+          begin
+            if ProcessEntry.szExeFile[i] = #0 then
+              Break;
+            ExeName := ExeName + ProcessEntry.szExeFile[i];
+          end;
+        except
+          Found := Process32Next(hSnapshot, ProcessEntry);
+          Continue;
+        end;
+
+        if CompareText(ExeName, ProcessName) = 0 then
+        begin
+          hProcess := OpenProcess(PROCESS_TERMINATE, False, ProcessEntry.th32ProcessID);
+          if hProcess <> 0 then
+          try
+            Result := TerminateProcess(hProcess, 1);
+          finally
+            CloseHandle(hProcess);
+          end;
+          if Result then
+            Break;
+        end;
+        Found := Process32Next(hSnapshot, ProcessEntry);
+      end;
+    finally
+      CloseHandle(hSnapshot);
+    end;
+  except
+    Log('Exception in KillProcess: ' + GetExceptionMessage);
+    Result := False;
   end;
 end;
 
@@ -311,47 +347,78 @@ end;
 function InitializeUninstall(): Boolean;
 var
   ProcessesKilled: Integer;
+  ProcessRunning: Boolean;
 begin
   Result := True;
   ProcessesKilled := 0;
   
-  // Check and kill uxplay-windows.exe
-  if IsProcessRunning('uxplay-windows.exe') then
-  begin
-    if KillProcess('uxplay-windows.exe') then
-    begin
-      ProcessesKilled := ProcessesKilled + 1;
-      Log('Terminated uxplay-windows.exe process');
-    end
-    else
-    begin
-      MsgBox('Could not terminate uxplay-windows.exe process. Please close the application manually and try again.', mbError, MB_OK);
-      Result := False;
-      Exit;
+  try
+    // Safely check and kill uxplay-windows.exe
+    try
+      ProcessRunning := IsProcessRunning('uxplay-windows.exe');
+    except
+      ProcessRunning := False;
+      Log('Could not check if uxplay-windows.exe is running');
     end;
-  end;
-  
-  // Check and kill uxplay.exe
-  if IsProcessRunning('uxplay.exe') then
-  begin
-    if KillProcess('uxplay.exe') then
+    
+    if ProcessRunning then
     begin
-      ProcessesKilled := ProcessesKilled + 1;
-      Log('Terminated uxplay.exe process');
-    end
-    else
-    begin
-      MsgBox('Could not terminate uxplay.exe process. Please close the application manually and try again.', mbError, MB_OK);
-      Result := False;
-      Exit;
+      try
+        if KillProcess('uxplay-windows.exe') then
+        begin
+          ProcessesKilled := ProcessesKilled + 1;
+          Log('Terminated uxplay-windows.exe process');
+        end
+        else
+        begin
+          // Don't fail uninstall, just warn user
+          Log('Could not terminate uxplay-windows.exe process automatically');
+        end;
+      except
+        Log('Exception while trying to kill uxplay-windows.exe');
+      end;
     end;
-  end;
-  
-  if ProcessesKilled > 0 then
-  begin
-    MsgBox(Format('%d running process(es) were automatically terminated to proceed with uninstallation.', [ProcessesKilled]), mbInformation, MB_OK);
-    // Give some time for processes to fully terminate
-    Sleep(1000);
+    
+    // Safely check and kill uxplay.exe
+    try
+      ProcessRunning := IsProcessRunning('uxplay.exe');
+    except
+      ProcessRunning := False;
+      Log('Could not check if uxplay.exe is running');
+    end;
+    
+    if ProcessRunning then
+    begin
+      try
+        if KillProcess('uxplay.exe') then
+        begin
+          ProcessesKilled := ProcessesKilled + 1;
+          Log('Terminated uxplay.exe process');
+        end
+        else
+        begin
+          Log('Could not terminate uxplay.exe process automatically');
+        end;
+      except
+        Log('Exception while trying to kill uxplay.exe');
+      end;
+    end;
+    
+    if ProcessesKilled > 0 then
+    begin
+      try
+        MsgBox(Format('%d running process(es) were automatically terminated to proceed with uninstallation.', [ProcessesKilled]), mbInformation, MB_OK);
+        Sleep(1000);
+      except
+        // If even the message box fails, just continue
+        Log('Could not show process termination message');
+      end;
+    end;
+    
+  except
+    Log('Exception in InitializeUninstall: ' + GetExceptionMessage);
+    // Always allow uninstall to continue even if process management fails
+    Result := True;
   end;
 end;
 
