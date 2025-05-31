@@ -82,52 +82,53 @@ jobs:
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
 
       - name: Prune compilation artifact directory
-        shell: powershell
         run: |
-            $artifactDir = "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact"
-            $keepListFile = "D:\a\uxplay-windows\uxplay-windows\DLL-LIST.txt"
-            
-            $filesToKeep = New-Object System.Collections.Generic.HashSet[string]
-            Get-Content $keepListFile | ForEach-Object {
-                try {
-                    $fullPathFromList = (Resolve-Path $_ -ErrorAction Stop).Path
-                    [void]$filesToKeep.Add($fullPathFromList)
-                    Write-Host "Marked to keep: $fullPathFromList" -ForegroundColor Green
-                } catch {
-                    # If Resolve-Path fails, try using GetFullPath for relative paths
-                    try {
-                        $fullPathFromList = [System.IO.Path]::GetFullPath($_)
-                        if (Test-Path $fullPathFromList) {
-                            [void]$filesToKeep.Add($fullPathFromList)
-                            Write-Host "Marked to keep: $fullPathFromList" -ForegroundColor Green
-                        } else {
-                            Write-Host "Warning: File not found: '$fullPathFromList'. Skipping." -ForegroundColor Yellow
-                        }
-                    } catch {
-                        Write-Host "Warning: Could not resolve path from list: '$_'. Skipping." -ForegroundColor Yellow
-                    }
-                }
-            }
-
-            Write-Host "Total files marked to keep: $($filesToKeep.Count)"
-
-            $allFilesInTarget = Get-ChildItem -Path $artifactDir -Recurse -File
-
-            Write-Host "Total files found in target directory before pruning: $($allFilesInTarget.Count)"
-
-            $deletedCount = 0
-            foreach ($currentFile in $allFilesInTarget) {
-                $currentFilePath = $currentFile.FullName
-                if (-not $filesToKeep.Contains($currentFilePath)) {
-                    Write-Host "Deleting: $currentFilePath" -ForegroundColor Cyan
-                    Remove-Item $currentFilePath -Force
-                    $deletedCount++
-                }
-            }
-
-            Write-Host "Cleanup complete! Deleted $deletedCount files." -ForegroundColor Green
-            Write-Host "`nContents of $artifactDir after pruning:"
-            Get-ChildItem -Path $artifactDir -Recurse | Select-Object FullName
+          $artifactDir = "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact"
+          $keepListFile = "D:\a\uxplay-windows\uxplay-windows\DLL-LIST.txt"
+          
+          # Read patterns from the keep list (can include wildcards)
+          $keepPatterns = @()
+          Get-Content $keepListFile | ForEach-Object {
+              $pattern = $_.Trim()
+              if ($pattern) {
+                  $keepPatterns += $pattern
+              }
+          }
+      
+          Write-Host "Total keep patterns: $($keepPatterns.Count)"
+      
+          # Get all files currently existing in the target directory and its subdirectories
+          $allFilesInTarget = Get-ChildItem -Path $artifactDir -Recurse -File
+      
+          Write-Host "Total files found in target directory before pruning: $($allFilesInTarget.Count)"
+      
+          $deletedCount = 0
+          $keptCount = 0
+          
+          # Iterate through all files and check if they match any keep pattern
+          foreach ($currentFile in $allFilesInTarget) {
+              $currentFilePath = $currentFile.FullName
+              $shouldKeep = $false
+              
+              # Check if the current file matches any of the keep patterns
+              foreach ($pattern in $keepPatterns) {
+                  if ($currentFilePath -like $pattern) {
+                      $shouldKeep = $true
+                      $keptCount++
+                      break
+                  }
+              }
+              
+              if (-not $shouldKeep) {
+                  Remove-Item $currentFilePath -Force
+                  $deletedCount++
+              }
+          }
+      
+          Write-Host "Cleanup complete! Kept $keptCount files, deleted $deletedCount files." -ForegroundColor Green
+          Write-Host "`nContents of $artifactDir after pruning:"
+          Get-ChildItem -Path $artifactDir -Recurse | Select-Object FullName
+        shell: powershell
           
       - name: install pyinstaller and dependencies
         run: |
