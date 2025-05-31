@@ -34,8 +34,12 @@ Please see [BUILDING.md](./BUILDING.md)
 
 
 ## TODO
-- remove unnecessary DDLs from the installer
-- explore the use of FOSS Bonjour alternatives
+- make colored icon to show if uxplay is running or not
+- make an update checker
+- modify github action
+  - stop using sdk and use PS instead
+  - do `setup.exe /extract` to get the msi (instead of using 7zip)
+
 
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
