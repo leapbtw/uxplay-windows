@@ -332,7 +332,7 @@ end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   // Skip the download page if we're not installing Bonjour
-  if (PageID = BonjourDownloadPage.ID) and (not BonjourInstallNeeded) then
+  if Assigned(BonjourDownloadPage) and (PageID = BonjourDownloadPage.ID) and (not BonjourInstallNeeded) then
     Result := True
   else
     Result := False;
