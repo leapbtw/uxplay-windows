@@ -23,11 +23,6 @@ jobs:
     steps:
       - name: clone the repo
         uses: actions/checkout@v4
-
-      - name: download & install 7zip
-        run: | 
-          Invoke-WebRequest -Uri https://7-zip.org/a/7z2301-x64.exe -OutFile 7zip.exe
-          .\7zip.exe /S
           
       - name: download & install Inno Setup
         run: |
@@ -41,7 +36,8 @@ jobs:
           BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
         run: |
           Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
-          .'C:\Program Files\7-Zip\7z.exe' -tcab x bonjoursdksetup.exe
+          .\bonjoursdksetup.exe /extract
+          Start-Sleep 5
           
           $bonjour64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "Bonjour64.msi") /qn /L*v bonjour64.log"
           Start-Process msiexec -ArgumentList $bonjour64args -NoNewWindow -Wait
