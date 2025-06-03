@@ -60,19 +60,8 @@ jobs:
         with:
           update: true
           install: >-
-            git
-            zip
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-libplist
-            mingw-w64-x86_64-json-glib
-            mingw-w64-x86_64-gstreamer
-            mingw-w64-x86_64-gst-plugins-base
-            mingw-w64-x86_64-gst-libav
-            mingw-w64-x86_64-gst-plugins-good
-            mingw-w64-x86_64-gst-plugins-bad
+            git zip mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-libplist mingw-w64-x86_64-json-glib mingw-w64-x86_64-gstreamer mingw-w64-x86_64-gst-plugins-base mingw-w64-x86_64-gst-libav mingw-w64-x86_64-gst-plugins-good mingw-w64-x86_64-gst-plugins-bad
 
-      
       - name: (optional) Setup tmate session
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
