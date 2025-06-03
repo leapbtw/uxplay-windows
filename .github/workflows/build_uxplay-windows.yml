@@ -2,11 +2,6 @@ name: build uxplay for windows
 on:
   workflow_dispatch:
     inputs:
-      bonjour_sdk_url:
-        description: "Direct URL to BonjourSDKSetup.exe v3.0. Download from https://developer.apple.com/bonjour and upload it somewhere"
-        default: ""
-        required: true
-        type: string
       tmate_debug_enabled:
         description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         default: false
@@ -29,21 +24,7 @@ jobs:
           Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile is.exe
           start (Join-Path -Path $(Get-Location) -ChildPath "is.exe") /VERYSILENT
         
-      # downloads BonjourSDKSetup.exe from the URL provided, extracts it into the multiple .msi(s),
-      #    installs the runtime and then the SDK (both neeeded, in this order)
       - name: download+install mDNSResponder libraries
-      #  env:
-      #    BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
-      #  run: |
-      #    Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
-      #    .\bonjoursdksetup.exe /extract
-      #    Start-Sleep 5
-          
-      #    $bonjour64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "Bonjour64.msi") /qn /L*v bonjour64.log"
-      #    Start-Process msiexec -ArgumentList $bonjour64args -NoNewWindow -Wait
-          
-      #    $bonjourSDK64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "BonjourSDK64.msi") /qn /L*v bonjoursdk64.log"
-      #    Start-Process msiexec -ArgumentList $bonjourSDK64args -NoNewWindow -Wait
         run: |
           git clone -b rel/mDNSResponder-214 https://github.com/apple-oss-distributions/mDNSResponder.git --depth 1 mdns214
           cp dnssd.vcxproj mdns214\mDNSWindows\DLL\dnssd.vcxproj
@@ -53,6 +34,7 @@ jobs:
           mkdir "C:\Program Files\Bonjour SDK\Lib\x64"
           cp mdns214\mDNSShared\dns_sd.h "C:\Program Files\Bonjour SDK\Include\dns_sd.h"
           cp mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib "C:\Program Files\Bonjour SDK\Lib\x64\dnssd.lib"
+        # this compiling has errors, but we don't care because all we need is dnssd.lib which gets compiled with no issues
         continue-on-error: true
 
       - name: download+install msys2 and related build dependencies
@@ -85,14 +67,8 @@ jobs:
           cp -r /mingw64/lib/gstreamer-1.0 lib/gstreamer-1.0
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
-          echo ".\bin\uxplay.exe" > uxplay-windows.bat
-        continue-on-error: true
 
-        
-      - name: (optional) Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
-        
+        # remove unnecessary DLLs so we get a smaller installer
       - name: Prune compilation artifact directory
         run: |
           $artifactDir = "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact"
@@ -141,7 +117,8 @@ jobs:
           Write-Host "`nContents of $artifactDir after pruning:"
           Get-ChildItem -Path $artifactDir -Recurse | Select-Object FullName
         shell: powershell
-          
+
+      # compiling the python tray icon into an .exe
       - name: install pyinstaller and dependencies
         run: |
           python -m venv ./venv
@@ -163,3 +140,7 @@ jobs:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
 
+      # move this between steps for debugging
+      - name: (optional) Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
