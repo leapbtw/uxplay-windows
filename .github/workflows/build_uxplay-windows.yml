@@ -72,10 +72,6 @@ jobs:
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
 
-      - name: (optional) Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
-
       - name: compiling uxplay (finally)
         shell: msys2 {0}
         run: |
@@ -90,7 +86,13 @@ jobs:
           cp -r /mingw64/bin bin
           cp ../uxplay.exe bin
           echo ".\bin\uxplay.exe" > uxplay-windows.bat
+        continue-on-error: true
 
+        
+      - name: (optional) Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
+        
       - name: Prune compilation artifact directory
         run: |
           $artifactDir = "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact"
