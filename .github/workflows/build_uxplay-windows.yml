@@ -31,21 +31,30 @@ jobs:
         
       # downloads BonjourSDKSetup.exe from the URL provided, extracts it into the multiple .msi(s),
       #    installs the runtime and then the SDK (both neeeded, in this order)
-      - name: download & install Bonjour
-        env:
-          BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
+      - name: download+install mDNSResponder libraries
+      #  env:
+      #    BONJOUR_URL: ${{ inputs.bonjour_sdk_url }}
+      #  run: |
+      #    Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
+      #    .\bonjoursdksetup.exe /extract
+      #    Start-Sleep 5
+          
+      #    $bonjour64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "Bonjour64.msi") /qn /L*v bonjour64.log"
+      #    Start-Process msiexec -ArgumentList $bonjour64args -NoNewWindow -Wait
+          
+      #    $bonjourSDK64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "BonjourSDK64.msi") /qn /L*v bonjoursdk64.log"
+      #    Start-Process msiexec -ArgumentList $bonjourSDK64args -NoNewWindow -Wait
         run: |
-          Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile bonjoursdksetup.exe
-          .\bonjoursdksetup.exe /extract
-          Start-Sleep 5
-          
-          $bonjour64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "Bonjour64.msi") /qn /L*v bonjour64.log"
-          Start-Process msiexec -ArgumentList $bonjour64args -NoNewWindow -Wait
-          
-          $bonjourSDK64args = "/i $(Join-Path -Path $(Get-Location) -ChildPath "BonjourSDK64.msi") /qn /L*v bonjoursdk64.log"
-          Start-Process msiexec -ArgumentList $bonjourSDK64args -NoNewWindow -Wait
+          git clone -b rel/mDNSResponder-214 https://github.com/apple-oss-distributions/mDNSResponder.git --depth 1 mdns214
+          cp dnssd.vcxproj mdns214\mDNSWindows\DLL\dnssd.vcxproj
+          & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe' mdns214\mDNSWindows\DLL\dnssd.vcxproj /p:Configuration=Release /p:Platform=x64
 
-      - name: download & install msys2 + build dependencies
+          mkdir "C:\Program Files\Bonjour SDK\Include"
+          mkdir "C:\Program Files\Bonjour SDK\Lib"
+          cp mdns214\mDNSShared\dns_sd.h "C:\Program Files\Bonjour SDK\Include\dns_sd.h"
+          cp mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib "C:\Program Files\Bonjour SDK\Lib\dnssd.lib"
+
+      - name: download+install msys2 and related build dependencies
         uses: msys2/setup-msys2@v2
         with:
           update: true
