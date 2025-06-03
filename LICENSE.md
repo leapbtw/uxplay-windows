@@ -1,42 +1,56 @@
 # Project License Information
 
-## Software Components and Licenses:
+This software (uxplay-windows) is licensed under the [GNU General Public License v3.0 (GPLv3)](https://www.gnu.org/licenses/gpl-3.0.html).
 
-### 1. Material Design Icon File:
-   - License: Apache License 2.0
-   - Source: https://pictogrammers.com/docs/general/license/
+uxplay-windows makes use of various software components and libraries, each under their own licenses.
 
-### 2. MSYS2 and its components:
-   - License: Various (See individual package licenses)
-   - Source: [MSYS2 Website](https://www.msys2.org/)
+### 1. UxPlay
+- License: [GNU General Public License v3.0 (GPLv3)](https://github.com/FDH2/UxPlay/blob/master/LICENSE)
+- Source: https://github.com/FDH2/UxPlay
 
-### 3. UxPlay:
-   - License: GNU General Public License v3.0
-   - Source: https://github.com/FDH2/UxPlay/blob/master/LICENSE
+### 2. mDNSResponder
+- uxplay-windows is compiled with both parts of mDNSShared and mDNSCore
+- Licenses: [Three-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) / [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- Sources:  
+  - https://github.com/apple-oss-distributions/mDNSResponder/blob/rel/mDNSResponder-214/LICENSE  
+  - https://github.com/apple-oss-distributions/mDNSResponder/blob/rel/mDNSResponder-214/mDNSShared/dns_sd.h  
+  - https://github.com/apple-oss-distributions/mDNSResponder/blob/rel/mDNSResponder-214/mDNSCore/mDNS.c
 
-### 4. Inno Setup:
-   - License: Inno Setup License
-   - Source: [Inno Setup Website](https://jrsoftware.org/isinfo.php)
+### 3. GStreamer
+- uxplay-windows redistributes parts of GStreamer and its plugins.
+- License: [Lesser General Public License (LGPL)](https://www.gnu.org/licenses/lgpl-3.0.html)
+- Users must comply with LGPL terms when redistributing the software.
+- Sources:  
+  - https://gstreamer.freedesktop.org/  
+  - https://github.com/GStreamer/gst-plugins-base  
+  - https://github.com/GStreamer/gst-plugins-bad  
+  - https://github.com/GStreamer/gst-plugins-good  
+  - https://github.com/GStreamer/gst-libav
 
-## Additional Software Component:
+### 4. Inno Setup
+- License: [Inno Setup License](https://jrsoftware.org/isinfo.php#license)
+- Source: https://jrsoftware.org/isinfo.php
 
-### Apple Bonjour SDK:
-   - Source: https://developer.apple.com/download/all/?q=Bonjour%20SDK%20for%20Windows
-   - Usage: The Apple Bonjour SDK is a dependency of UxPlay and it's used during compile time.
-     Users are responsible for obtaining and providing the Bonjour SDK themselves, as it cannot be distributed directly with this project due to licensing restrictions.
-     The SDK is used unmodified and is deleted after compile time, in accordance with the terms of the Bonjour SDK license.
+### 5. Material Design Icon File
+- uxplay-windows uses a slightly modified icon from Material Design Icons
+- License: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- Source: https://pictogrammers.com/docs/general/license/
 
-## Project License:
+---
 
-The project, uxplay-windows, makes use of various software components each with their own licenses. 
-This includes components under the Apache License 2.0, GNU General Public License v3.0, and the Inno Setup License.
+### Build Tools
 
-- uxplay-windows is provided under the terms of the GNU General Public License v3.0.
-- uxplay-windows does not redistribute any Inno Setup or MSYS2 code/software, but uses those in the build process of UxPlay for windows
+uxplay-windows uses **MSYS2** and **PyInstaller** during the build process but **does not redistribute these tools**.
 
-## Disclaimer:
+- PyInstaller is licensed under GPL 2.0 with a special exception allowing bundling of commercial applications without imposing GPL on the final app. Since uxplay-windows does not modify or redistribute PyInstaller, no additional licensing obligations arise.
 
-The license information provided here is based on my best understanding of the licenses of the respective components at the time of this writing.
+- MSYS2 is a collection of software packages, each with its own license. Since uxplay-windows does not redistribute MSYS2 components, you only need to comply with the licenses of any third-party libraries (Gstreamer) included in uxplay-windows.
+
+---
+
+## Disclaimer
+
+The license information provided here is based on my best understanding of the licenses of the respective components at the time of this writing.  
 I make no guarantee that it is accurate or complete. Users of this project are responsible for ensuring compliance with the licenses of all included components.
 
-If there's any problem please contact me and I'll reply as soon as possible to try to comply with your requests.
+If there's any problem or question regarding licensing, please contact me and I will respond as soon as possible to address your concerns.
