@@ -39,4 +39,4 @@ Please see [BUILDING.md](./BUILDING.md)
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
 
 ## License
-I haven't made most of the code myself, please look at [CREDITS](./CREDITS.md). If you want to use this project for anything, please take a look at the [LICENSE](./LICENSE).
+Please take a look at the [LICENSE](./LICENSE).
