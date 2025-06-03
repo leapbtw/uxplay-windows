@@ -53,6 +53,7 @@ jobs:
           mkdir "C:\Program Files\Bonjour SDK\Lib"
           cp mdns214\mDNSShared\dns_sd.h "C:\Program Files\Bonjour SDK\Include\dns_sd.h"
           cp mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib "C:\Program Files\Bonjour SDK\Lib\dnssd.lib"
+        continue-on-error: true
 
       - name: download+install msys2 and related build dependencies
         uses: msys2/setup-msys2@v2
