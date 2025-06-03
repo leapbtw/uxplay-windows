@@ -50,9 +50,9 @@ jobs:
           & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe' mdns214\mDNSWindows\DLL\dnssd.vcxproj /p:Configuration=Release /p:Platform=x64
 
           mkdir "C:\Program Files\Bonjour SDK\Include"
-          mkdir "C:\Program Files\Bonjour SDK\Lib"
+          mkdir "C:\Program Files\Bonjour SDK\Lib\x64"
           cp mdns214\mDNSShared\dns_sd.h "C:\Program Files\Bonjour SDK\Include\dns_sd.h"
-          cp mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib "C:\Program Files\Bonjour SDK\Lib\dnssd.lib"
+          cp mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib "C:\Program Files\Bonjour SDK\Lib\x64\dnssd.lib"
         continue-on-error: true
 
       - name: download+install msys2 and related build dependencies
