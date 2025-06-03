@@ -96,7 +96,7 @@ jobs:
       - name: Prune compilation artifact directory
         run: |
           $artifactDir = "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact"
-          $keepListFile = "D:\a\uxplay-windows\uxplay-windows\DLL-LIST.txt"
+          $keepListFile = "D:\a\uxplay-windows\uxplay-windows\dll-libs-list.txt"
           
           # Read patterns from the keep list (can include wildcards)
           $keepPatterns = @()
