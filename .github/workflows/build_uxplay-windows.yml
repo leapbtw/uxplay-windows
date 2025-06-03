@@ -62,6 +62,11 @@ jobs:
             mingw-w64-x86_64-gst-plugins-good
             mingw-w64-x86_64-gst-plugins-bad
 
+      
+      - name: (optional) Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
+
       - name: compiling uxplay (finally)
         shell: msys2 {0}
         run: |
@@ -146,8 +151,4 @@ jobs:
         with:
           name: uxplay-windows
           path: Output\uxplay-windows.exe
-          
-      - name: (optional) Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_debug_enabled }}
 
