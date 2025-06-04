@@ -1,4 +1,4 @@
-name: build uxplay for windows
+name: build uxplay-windows
 on:
   workflow_dispatch:
     inputs:
