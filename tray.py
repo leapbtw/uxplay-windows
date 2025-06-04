@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import winreg
+import webbrowser
 import threading
 import time
 
@@ -68,11 +69,14 @@ def toggle_autostart(icon, item):
     else:
         enable_autostart()
 
+def show_license(icon, item):
+    webbrowser.open('https://github.com/leapbtw/uxplay-windows/blob/main/LICENSE.md')
+
 def exit_tray_icon(icon, item):
     stop_server()
     icon.stop()
 
-tray_icon = pystray.Icon("Icon", IMAGE, menu=pystray.Menu(
+tray_icon = pystray.Icon("Icon", IMAGE, title="uxplay-windows\nRight-click to show options", menu=pystray.Menu(
     pystray.MenuItem("Start UxPlay", start_server),
     pystray.MenuItem("Stop UxPlay", stop_server),
     pystray.MenuItem("Restart UxPlay", restart_server),
@@ -81,7 +85,8 @@ tray_icon = pystray.Icon("Icon", IMAGE, menu=pystray.Menu(
         toggle_autostart,
         checked=lambda item: is_autostart_enabled()
     ),
-    pystray.MenuItem("Exit", exit_tray_icon)
+    pystray.MenuItem("Exit", exit_tray_icon),
+    pystray.MenuItem("License", show_license)
 ))
 
 # Start the server after 3-second delay in a non-blocking thread
