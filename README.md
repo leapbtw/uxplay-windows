@@ -19,6 +19,7 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 > *My \<apple device\> can't connect to my PC!!!*
 > 1. Check if the `uxplay.exe` is running: right-click the tray icon and restart it.
 > 2. Toggle Wi-Fi OFF on your iPhone/iPad/Mac, wait a couple of seconds and reconnect. It might take a few attempts.
+> 3. As last resort, close uxplay-windows, open Task Manager and restart `Bonjour Service` from the Services tab. Then reopen uxplay-windows and try again
 
 > [!IMPORTANT]
 > *Why is Windows Defender complaining during installation?*
