@@ -38,19 +38,17 @@ SCRIPT_FOR_AUTOSTART = f'"{sys.executable}"'
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 def ensure_appdata_structure():
-    # Ensures the %appdata%\uxplay-windows directory and arguments.txt file exist.
     print(f"Ensuring application data directory: {APPDATA_PATH}")
     os.makedirs(APPDATA_PATH, exist_ok=True)
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         print(f"Creating default arguments file: {ARGUMENTS_FILE_PATH}")
         with open(ARGUMENTS_FILE_PATH, 'w') as f:
-            f.write('') # Create an empty file, users can add arguments later
+            f.write('')
         print("Default arguments.txt created.")
     else:
         print("arguments.txt already exists.")
 
 def get_user_arguments():
-    # Reads arguments from the arguments.txt file.
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         print(f"Warning: {ARGUMENTS_FILE_PATH} not found. No custom arguments will be used.")
         return []
@@ -65,25 +63,20 @@ def get_user_arguments():
         return []
 
 def is_service_running(service_name):
-    # Checks if a Windows service is currently running.
     try:
-        # Query service status using sc.exe
         result = subprocess.run(
             ['sc', 'query', service_name],
             capture_output=True,
             text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            check=True # Raise an error for non-zero exit codes
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
-        # Look for "STATE        : 4  RUNNING" in the output
-        return "STATE        : 4  RUNNING" in result.stdout
-    except subprocess.CalledProcessError as e:
-        if f"The specified service does not exist as an installed service." in e.stderr:
-            print(f"Service '{service_name}' does not exist.")
+        if result.returncode != 0:
+            if f"The specified service does not exist" in result.stderr:
+                print(f"Service '{service_name}' does not exist.")
+            else:
+                print(f"Error querying service '{service_name}': {result.stderr.strip()}")
             return False
-        print(f"Error querying service '{service_name}': {e}")
-        print(f"Stderr: {e.stderr}")
-        return False
+        return "STATE        : 4  RUNNING" in result.stdout
     except FileNotFoundError:
         print("Error: 'sc' command not found. Ensure it's in your PATH.")
         return False
@@ -92,68 +85,70 @@ def is_service_running(service_name):
         return False
 
 def start_service(service_name):
-    # Starts a Windows service.
     if is_service_running(service_name):
         print(f"Service '{service_name}' is already running.")
         return True
     try:
         print(f"Starting service '{service_name}'...")
-        subprocess.run(
-            ['net', 'start', service_name],
+        result = subprocess.run(
+            ['sc', 'start', service_name],
             capture_output=True,
             text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            check=True
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
-        # Give it a moment to start and then verify
-        time.sleep(2)
-        if is_service_running(service_name):
-            print(f"Service '{service_name}' started successfully.")
-            return True
-        else:
-            print(f"Failed to start service '{service_name}'.")
+        if result.returncode != 0:
+            print(f"Failed to start service '{service_name}': {result.stderr.strip()}")
+            print(f"Stdout: {result.stdout.strip()}")
             return False
-    except subprocess.CalledProcessError as e:
-        print(f"Error starting service '{service_name}': {e}")
-        print(f"Stdout: {e.stdout}")
-        print(f"Stderr: {e.stderr}")
+
+        # Give it a moment to start and then verify
+        # Polling for status is more robust than a fixed sleep
+        max_attempts = 10
+        for i in range(max_attempts):
+            time.sleep(1) # Wait 1 second
+            if is_service_running(service_name):
+                print(f"Service '{service_name}' started successfully.")
+                return True
+            print(f"Waiting for '{service_name}' to start... ({i+1}/{max_attempts})")
+        print(f"Service '{service_name}' did not start in time.")
         return False
     except FileNotFoundError:
-        print("Error: 'net' command not found. Ensure it's in your PATH.")
+        print("Error: 'sc' command not found. Ensure it's in your PATH.")
         return False
     except Exception as e:
         print(f"An unexpected error occurred while starting service '{service_name}': {e}")
         return False
 
 def stop_service(service_name):
-    # Stops a Windows service.
     if not is_service_running(service_name):
         print(f"Service '{service_name}' is not running.")
         return True
     try:
         print(f"Stopping service '{service_name}'...")
-        subprocess.run(
-            ['net', 'stop', service_name],
+        result = subprocess.run(
+            ['sc', 'stop', service_name],
             capture_output=True,
             text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            check=True
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
-        # Give it a moment to stop and then verify
-        time.sleep(2)
-        if not is_service_running(service_name):
-            print(f"Service '{service_name}' stopped successfully.")
-            return True
-        else:
-            print(f"Failed to stop service '{service_name}'.")
+        if result.returncode != 0:
+            print(f"Failed to stop service '{service_name}': {result.stderr.strip()}")
+            print(f"Stdout: {result.stdout.strip()}")
             return False
-    except subprocess.CalledProcessError as e:
-        print(f"Error stopping service '{service_name}': {e}")
-        print(f"Stdout: {e.stdout}")
-        print(f"Stderr: {e.stderr}")
+
+        # Give it a moment to stop and then verify
+        # Polling for status is more robust than a fixed sleep
+        max_attempts = 10
+        for i in range(max_attempts):
+            time.sleep(1) # Wait 1 second
+            if not is_service_running(service_name): # Check if it's NOT running
+                print(f"Service '{service_name}' stopped successfully.")
+                return True
+            print(f"Waiting for '{service_name}' to stop... ({i+1}/{max_attempts})")
+        print(f"Service '{service_name}' did not stop in time.")
         return False
     except FileNotFoundError:
-        print("Error: 'net' command not found. Ensure it's in your PATH.")
+        print("Error: 'sc' command not found. Ensure it's in your PATH.")
         return False
     except Exception as e:
         print(f"An unexpected error occurred while stopping service '{service_name}': {e}")
@@ -169,8 +164,7 @@ def start_server():
     print("Attempting to start Bonjour Service...")
     if not start_service(BONJOUR_SERVICE_NAME):
         print("Warning: Could not start Bonjour Service. UxPlay might not be discoverable.")
-        # Decide if you want to proceed with UxPlay without Bonjour or exit
-        # For now, we'll proceed but log a warning.
+        # Proceed with UxPlay but log warning; user can still try to connect manually by IP.
 
     # 2. Start UxPlay
     print("Attempting to start UxPlay server...")
@@ -186,11 +180,10 @@ def start_server():
         print(f"UxPlay server started with PID: {process.pid}")
     except FileNotFoundError:
         print(f"Error: uxplay.exe not found at {UXPLAY_PATH}. Please ensure it exists.")
-        # If UxPlay fails, consider stopping Bonjour if it was started by this app
-        stop_service(BONJOUR_SERVICE_NAME)
+        stop_service(BONJOUR_SERVICE_NAME) # Clean up Bonjour if UxPlay failed to launch
     except Exception as e:
         print(f"An error occurred while starting UxPlay: {e}")
-        stop_service(BONJOUR_SERVICE_NAME) # Stop Bonjour if UxPlay failed
+        stop_service(BONJOUR_SERVICE_NAME) # Clean up Bonjour if UxPlay failed to launch
 
 def stop_server():
     global process
@@ -217,9 +210,7 @@ def stop_server():
 
 def restart_server(icon, item):
     print("Restarting UxPlay server and Bonjour Service...")
-    # Stop both first
     stop_server()
-    # Then start both
     start_server()
 
 def is_autostart_enabled():
@@ -258,7 +249,6 @@ def toggle_autostart(icon, item):
         enable_autostart()
 
 def open_arguments_file(icon, item):
-    # Opens the arguments.txt file in the default text editor.
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         ensure_appdata_structure()
     try:
@@ -274,7 +264,7 @@ def show_license(icon, item):
 
 def exit_tray_icon(icon, item):
     print("Exiting application...")
-    stop_server() # This will now also stop Bonjour
+    stop_server()
     icon.stop()
     print("Application exited.")
 
@@ -302,7 +292,7 @@ def main():
 
     def delayed_start():
         time.sleep(3)
-        start_server() # This will now also attempt to start Bonjour
+        start_server()
 
     threading.Thread(target=delayed_start, daemon=True).start()
 
