@@ -17,58 +17,163 @@ else:
 # Define application-specific paths
 APP_NAME = "uxplay-windows"
 TRAY_ICON_PATH = os.path.join(BASE_DIR, "icon.ico")
-IMAGE = PIL.Image.open(TRAY_ICON_PATH)
 UXPLAY_PATH = os.path.join(BASE_DIR, "bin", "uxplay.exe")
 
 # Define AppData paths
 APPDATA_PATH = os.path.join(os.environ.get('APPDATA'), APP_NAME)
 ARGUMENTS_FILE_PATH = os.path.join(APPDATA_PATH, "arguments.txt")
 
+# Define Bonjour Service Name
+BONJOUR_SERVICE_NAME = "Bonjour Service" # Standard service name for Apple's Bonjour
+
+# Load the tray icon image
+try:
+    IMAGE = PIL.Image.open(TRAY_ICON_PATH)
+except FileNotFoundError:
+    print(f"Error: Tray icon not found at {TRAY_ICON_PATH}. Ensure 'icon.ico' exists.")
+    IMAGE = None # Fallback or provide a default placeholder image if possible
+
 process = None
 SCRIPT_FOR_AUTOSTART = f'"{sys.executable}"'
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
-
 def ensure_appdata_structure():
+    # Ensures the %appdata%\uxplay-windows directory and arguments.txt file exist.
     print(f"Ensuring application data directory: {APPDATA_PATH}")
     os.makedirs(APPDATA_PATH, exist_ok=True)
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         print(f"Creating default arguments file: {ARGUMENTS_FILE_PATH}")
         with open(ARGUMENTS_FILE_PATH, 'w') as f:
-            f.write('')  # Create an empty file, users can add arguments later
+            f.write('') # Create an empty file, users can add arguments later
         print("Default arguments.txt created.")
     else:
         print("arguments.txt already exists.")
 
-
 def get_user_arguments():
+    # Reads arguments from the arguments.txt file.
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         print(f"Warning: {ARGUMENTS_FILE_PATH} not found. No custom arguments will be used.")
         return []
     try:
         with open(ARGUMENTS_FILE_PATH, 'r') as f:
-            # Read all lines, split by whitespace, and filter out empty strings
             args_str = f.read().strip()
             if not args_str:
                 return []
-            # Split by any whitespace and handle potential multiple spaces
-            # Use shlex.split for more robust parsing if arguments contain spaces/quotes
-            # For simplicity, we'll just split by whitespace for now.
             return args_str.split()
     except Exception as e:
         print(f"Error reading arguments from {ARGUMENTS_FILE_PATH}: {e}")
         return []
 
+def is_service_running(service_name):
+    # Checks if a Windows service is currently running.
+    try:
+        # Query service status using sc.exe
+        result = subprocess.run(
+            ['sc', 'query', service_name],
+            capture_output=True,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            check=True # Raise an error for non-zero exit codes
+        )
+        # Look for "STATE        : 4  RUNNING" in the output
+        return "STATE        : 4  RUNNING" in result.stdout
+    except subprocess.CalledProcessError as e:
+        if f"The specified service does not exist as an installed service." in e.stderr:
+            print(f"Service '{service_name}' does not exist.")
+            return False
+        print(f"Error querying service '{service_name}': {e}")
+        print(f"Stderr: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("Error: 'sc' command not found. Ensure it's in your PATH.")
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred while checking service '{service_name}': {e}")
+        return False
+
+def start_service(service_name):
+    # Starts a Windows service.
+    if is_service_running(service_name):
+        print(f"Service '{service_name}' is already running.")
+        return True
+    try:
+        print(f"Starting service '{service_name}'...")
+        subprocess.run(
+            ['net', 'start', service_name],
+            capture_output=True,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            check=True
+        )
+        # Give it a moment to start and then verify
+        time.sleep(2)
+        if is_service_running(service_name):
+            print(f"Service '{service_name}' started successfully.")
+            return True
+        else:
+            print(f"Failed to start service '{service_name}'.")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"Error starting service '{service_name}': {e}")
+        print(f"Stdout: {e.stdout}")
+        print(f"Stderr: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("Error: 'net' command not found. Ensure it's in your PATH.")
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred while starting service '{service_name}': {e}")
+        return False
+
+def stop_service(service_name):
+    # Stops a Windows service.
+    if not is_service_running(service_name):
+        print(f"Service '{service_name}' is not running.")
+        return True
+    try:
+        print(f"Stopping service '{service_name}'...")
+        subprocess.run(
+            ['net', 'stop', service_name],
+            capture_output=True,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            check=True
+        )
+        # Give it a moment to stop and then verify
+        time.sleep(2)
+        if not is_service_running(service_name):
+            print(f"Service '{service_name}' stopped successfully.")
+            return True
+        else:
+            print(f"Failed to stop service '{service_name}'.")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"Error stopping service '{service_name}': {e}")
+        print(f"Stdout: {e.stdout}")
+        print(f"Stderr: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("Error: 'net' command not found. Ensure it's in your PATH.")
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred while stopping service '{service_name}': {e}")
+        return False
 
 def start_server():
     global process
     if process and process.poll() is None:
         print("UxPlay server is already running.")
-        return  # already running
+        return
 
+    # 1. Start Bonjour Service
+    print("Attempting to start Bonjour Service...")
+    if not start_service(BONJOUR_SERVICE_NAME):
+        print("Warning: Could not start Bonjour Service. UxPlay might not be discoverable.")
+        # Decide if you want to proceed with UxPlay without Bonjour or exit
+        # For now, we'll proceed but log a warning.
+
+    # 2. Start UxPlay
     print("Attempting to start UxPlay server...")
-
-    # Get user-defined arguments
     user_args = get_user_arguments()
     command = [UXPLAY_PATH] + user_args
     print(f"Launching command: {' '.join(command)}")
@@ -81,9 +186,11 @@ def start_server():
         print(f"UxPlay server started with PID: {process.pid}")
     except FileNotFoundError:
         print(f"Error: uxplay.exe not found at {UXPLAY_PATH}. Please ensure it exists.")
+        # If UxPlay fails, consider stopping Bonjour if it was started by this app
+        stop_service(BONJOUR_SERVICE_NAME)
     except Exception as e:
         print(f"An error occurred while starting UxPlay: {e}")
-
+        stop_service(BONJOUR_SERVICE_NAME) # Stop Bonjour if UxPlay failed
 
 def stop_server():
     global process
@@ -104,12 +211,16 @@ def stop_server():
     elif process is None:
         print("UxPlay server is not running.")
 
+    # Stop Bonjour Service after UxPlay
+    print("Attempting to stop Bonjour Service...")
+    stop_service(BONJOUR_SERVICE_NAME)
 
 def restart_server(icon, item):
-    print("Restarting UxPlay server...")
+    print("Restarting UxPlay server and Bonjour Service...")
+    # Stop both first
     stop_server()
+    # Then start both
     start_server()
-
 
 def is_autostart_enabled():
     try:
@@ -122,7 +233,6 @@ def is_autostart_enabled():
         print(f"Error checking autostart: {e}")
         return False
 
-
 def enable_autostart():
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
@@ -130,7 +240,6 @@ def enable_autostart():
         print(f"Autostart enabled for {APP_NAME} with value: {SCRIPT_FOR_AUTOSTART}")
     except Exception as e:
         print(f"Error enabling autostart: {e}")
-
 
 def disable_autostart():
     try:
@@ -142,39 +251,34 @@ def disable_autostart():
     except Exception as e:
         print(f"Error disabling autostart: {e}")
 
-
 def toggle_autostart(icon, item):
     if is_autostart_enabled():
         disable_autostart()
     else:
         enable_autostart()
 
-
 def open_arguments_file(icon, item):
+    # Opens the arguments.txt file in the default text editor.
     if not os.path.exists(ARGUMENTS_FILE_PATH):
-        ensure_appdata_structure()  # Ensure it exists before trying to open
+        ensure_appdata_structure()
     try:
-        os.startfile(ARGUMENTS_FILE_PATH)  # Windows-specific way to open file with default app
+        os.startfile(ARGUMENTS_FILE_PATH)
         print(f"Opened arguments file: {ARGUMENTS_FILE_PATH}")
     except Exception as e:
         print(f"Error opening arguments file: {e}")
         print("You can manually navigate to:")
         print(APPDATA_PATH)
 
-
 def show_license(icon, item):
     webbrowser.open('https://github.com/leapbtw/uxplay-windows/blob/main/LICENSE.md')
 
-
 def exit_tray_icon(icon, item):
     print("Exiting application...")
-    stop_server()
+    stop_server() # This will now also stop Bonjour
     icon.stop()
     print("Application exited.")
 
-
 def main():
-    # Ensure AppData structure exists before anything else
     ensure_appdata_structure()
 
     tray_icon = pystray.Icon(
@@ -190,7 +294,7 @@ def main():
                 toggle_autostart,
                 checked=lambda item: is_autostart_enabled()
             ),
-            pystray.MenuItem("Edit UxPlay Arguments", open_arguments_file),  # New menu item
+            pystray.MenuItem("Edit UxPlay Arguments", open_arguments_file),
             pystray.MenuItem("License", show_license),
             pystray.MenuItem("Exit", exit_tray_icon)
         )
@@ -198,15 +302,13 @@ def main():
 
     def delayed_start():
         time.sleep(3)
-        start_server()
+        start_server() # This will now also attempt to start Bonjour
 
-    # Start the server after a short delay
     threading.Thread(target=delayed_start, daemon=True).start()
 
     print("Starting tray icon...")
     tray_icon.run()
     print("Tray icon stopped.")
-
 
 if __name__ == "__main__":
     main()
