@@ -1,81 +1,87 @@
+import os
+import sys
 import logging
 import shlex
 import subprocess
 import threading
 import time
-import sys
 import winreg
 import webbrowser
+
 from pathlib import Path
 from typing import List, Optional
 
 import pystray
 from PIL import Image
 
+# ─── Global Constants & Logging Setup ─────────────────────────────────────────
 
-# ─── Logging Configuration ─────────────────────────────────────────────────────
+APP_NAME = "uxplay-windows"
+# Use %APPDATA%\windows-uxplay for all data & logs
+APPDATA_DIR = Path(os.environ["APPDATA"]) / "windows-uxplay"
+LOG_FILE = APPDATA_DIR / f"{APP_NAME}.log"
+
+# Ensure AppData dir exists before we try to log there
+APPDATA_DIR.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("uxplay-windows.log"),
+        logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
         logging.StreamHandler(sys.stdout),
     ],
 )
-
 
 # ─── Path Management ───────────────────────────────────────────────────────────
 
 class Paths:
     def __init__(self):
-        # detect PyInstaller bundle or source
+        # Detect base path (PyInstaller vs. source)
         if getattr(sys, "frozen", False):
-            base = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") \
-                   else Path(sys.executable).parent
+            # When frozen, sys.executable is the .exe
+            self.base_dir = Path(getattr(sys, "_MEIPASS", "") or 
+                                 sys.executable).parent
         else:
-            base = Path(__file__).resolve().parent
+            self.base_dir = Path(__file__).resolve().parent
 
-        self.base_dir: Path = base
-        self.appdata_dir: Path = Path.home() / "AppData" / "Roaming" / "uxplay-windows"
+        self.appdata_dir: Path = APPDATA_DIR
         self.arguments_file: Path = self.appdata_dir / "arguments.txt"
         self.icon_file: Path = self.base_dir / "icon.ico"
         self.uxplay_exe: Path = self.base_dir / "bin" / "uxplay.exe"
 
-
 # ─── Argument File Management ─────────────────────────────────────────────────
 
 class ArgumentManager:
-    def __init__(self, args_path: Path):
-        self.args_path = args_path
+    def __init__(self, file_path: Path):
+        self.file_path = file_path
 
     def ensure_exists(self) -> None:
-        logging.info("Ensuring AppData directory '%s'", self.args_path.parent)
-        self.args_path.parent.mkdir(parents=True, exist_ok=True)
-        if not self.args_path.exists():
-            logging.info("Creating empty arguments file at '%s'", self.args_path)
-            self.args_path.write_text("")
+        logging.info("Ensuring arguments file at '%s'", self.file_path)
+        self.file_path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.file_path.exists():
+            self.file_path.write_text("")
+            logging.info("Created empty arguments.txt")
 
     def read_args(self) -> List[str]:
-        if not self.args_path.exists():
-            logging.warning("Arguments file not found, returning empty args")
+        if not self.file_path.exists():
+            logging.warning("arguments.txt missing, no custom args")
             return []
-        text = self.args_path.read_text().strip()
-        if not text:
+        raw = self.file_path.read_text(encoding="utf-8").strip()
+        if not raw:
             return []
         try:
-            return shlex.split(text)
+            return shlex.split(raw)
         except ValueError as e:
             logging.error("Failed to parse arguments: %s", e)
             return []
 
-
 # ─── Server Process Management ────────────────────────────────────────────────
 
 class ServerManager:
-    def __init__(self, exe_path: Path, arg_manager: ArgumentManager):
+    def __init__(self, exe_path: Path, arg_mgr: ArgumentManager):
         self.exe_path = exe_path
-        self.arg_manager = arg_manager
+        self.arg_mgr = arg_mgr
         self.process: Optional[subprocess.Popen] = None
 
     def start(self) -> None:
@@ -84,40 +90,40 @@ class ServerManager:
             return
 
         if not self.exe_path.exists():
-            logging.error("Executable not found: %s", self.exe_path)
+            logging.error("uxplay.exe not found at %s", self.exe_path)
             return
 
-        cmd = [str(self.exe_path)] + self.arg_manager.read_args()
-        logging.info("Starting server with command: %s", cmd)
+        cmd = [str(self.exe_path)] + self.arg_mgr.read_args()
+        logging.info("Starting UxPlay with: %s", cmd)
         try:
             self.process = subprocess.Popen(
-                cmd, creationflags=subprocess.CREATE_NO_WINDOW
+                cmd,
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
-            logging.info("Server started (PID %s)", self.process.pid)
-        except Exception as e:
-            logging.exception("Failed to start server: %s", e)
+            logging.info("Started (PID %s)", self.process.pid)
+        except Exception:
+            logging.exception("Failed to launch UxPlay")
 
     def stop(self) -> None:
-        if not self.process or self.process.poll() is not None:
-            logging.info("Server is not running.")
+        if not (self.process and self.process.poll() is None):
+            logging.info("Server not running.")
             return
-
-        logging.info("Stopping server (PID %s)...", self.process.pid)
+        pid = self.process.pid
+        logging.info("Stopping UxPlay (PID %s)...", pid)
         try:
             self.process.terminate()
             self.process.wait(timeout=3)
-            logging.info("Server stopped cleanly.")
+            logging.info("Stopped cleanly.")
         except subprocess.TimeoutExpired:
-            logging.warning("Termination timed out; killing process")
+            logging.warning("Did not stop in time, killing")
             self.process.kill()
             self.process.wait()
-        except Exception as e:
-            logging.exception("Error during server shutdown: %s", e)
+        except Exception:
+            logging.exception("Error stopping UxPlay")
         finally:
             self.process = None
 
-
-# ─── Autostart (Registry) Management ─────────────────────────────────────────
+# ─── Autostart via Windows Registry ──────────────────────────────────────────
 
 class AutoStartManager:
     RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -132,14 +138,14 @@ class AutoStartManager:
                 winreg.HKEY_CURRENT_USER,
                 self.RUN_KEY,
                 0,
-                winreg.KEY_READ,
+                winreg.KEY_READ
             ) as key:
                 val, _ = winreg.QueryValueEx(key, self.app_name)
                 return self.exe_script in val
         except FileNotFoundError:
             return False
         except Exception:
-            logging.exception("Failed to check autostart")
+            logging.exception("Failed to read autostart setting")
             return False
 
     def enable(self) -> None:
@@ -148,14 +154,14 @@ class AutoStartManager:
                 winreg.HKEY_CURRENT_USER,
                 self.RUN_KEY,
                 0,
-                winreg.KEY_SET_VALUE,
+                winreg.KEY_SET_VALUE
             ) as key:
                 winreg.SetValueEx(
                     key,
                     self.app_name,
                     0,
                     winreg.REG_SZ,
-                    self.exe_script,
+                    self.exe_script
                 )
             logging.info("Autostart enabled")
         except Exception:
@@ -167,12 +173,12 @@ class AutoStartManager:
                 winreg.HKEY_CURRENT_USER,
                 self.RUN_KEY,
                 0,
-                winreg.KEY_SET_VALUE,
+                winreg.KEY_SET_VALUE
             ) as key:
                 winreg.DeleteValue(key, self.app_name)
             logging.info("Autostart disabled")
         except FileNotFoundError:
-            logging.info("Autostart entry not found")
+            logging.info("Autostart entry not present")
         except Exception:
             logging.exception("Failed to disable autostart")
 
@@ -182,8 +188,7 @@ class AutoStartManager:
         else:
             self.enable()
 
-
-# ─── Tray Icon UI ────────────────────────────────────────────────────────────
+# ─── System Tray UI ───────────────────────────────────────────────────────────
 
 class TrayIcon:
     def __init__(
@@ -191,90 +196,98 @@ class TrayIcon:
         icon_path: Path,
         server_mgr: ServerManager,
         arg_mgr: ArgumentManager,
-        auto_mgr: AutoStartManager,
+        auto_mgr: AutoStartManager
     ):
-        self.icon = pystray.Icon(
-            name="uxplay-windows",
-            icon=Image.open(icon_path),
-            title="uxplay-windows",
-            menu=pystray.Menu(
-                pystray.MenuItem("Start UxPlay", lambda _: server_mgr.start()),
-                pystray.MenuItem("Stop UxPlay", lambda _: server_mgr.stop()),
-                pystray.MenuItem("Restart UxPlay", lambda _: self._restart(server_mgr)),
-                pystray.MenuItem(
-                    "Autostart with Windows",
-                    lambda _: auto_mgr.toggle(),
-                    checked=lambda item: auto_mgr.is_enabled(),
-                ),
-                pystray.MenuItem(
-                    "Edit UxPlay Arguments", lambda _: self._open_args(arg_mgr)
-                ),
-                pystray.MenuItem(
-                    "License",
-                    lambda _: webbrowser.open(
-                        "https://github.com/leapbtw/uxplay-windows/blob/main/LICENSE.md"
-                    ),
-                ),
-                pystray.MenuItem("Exit", lambda _: self._exit(server_mgr)),
+        self.server_mgr = server_mgr
+        self.arg_mgr = arg_mgr
+        self.auto_mgr = auto_mgr
+
+        menu = pystray.Menu(
+            pystray.MenuItem("Start UxPlay", lambda _: server_mgr.start()),
+            pystray.MenuItem("Stop UxPlay", lambda _: server_mgr.stop()),
+            pystray.MenuItem("Restart UxPlay", lambda _: self._restart()),
+            pystray.MenuItem(
+                "Autostart with Windows",
+                lambda _: auto_mgr.toggle(),
+                checked=lambda _: auto_mgr.is_enabled()
             ),
+            pystray.MenuItem(
+                "Edit UxPlay Arguments", lambda _: self._open_args()
+            ),
+            pystray.MenuItem(
+                "License",
+                lambda _: webbrowser.open(
+                    "https://github.com/leapbtw/uxplay-windows/"
+                    "blob/main/LICENSE.md"
+                )
+            ),
+            pystray.MenuItem("Exit", lambda _: self._exit())
         )
 
-    def _restart(self, server_mgr: ServerManager):
-        logging.info("Restarting server...")
-        server_mgr.stop()
-        server_mgr.start()
+        self.icon = pystray.Icon(
+            name=APP_NAME,
+            icon=Image.open(icon_path),
+            title=APP_NAME,
+            menu=menu
+        )
 
-    def _open_args(self, arg_mgr: ArgumentManager):
-        if not arg_mgr.args_path.exists():
-            arg_mgr.ensure_exists()
+    def _restart(self) -> None:
+        logging.info("Restarting UxPlay")
+        self.server_mgr.stop()
+        self.server_mgr.start()
+
+    def _open_args(self) -> None:
+        self.arg_mgr.ensure_exists()
         try:
-            arg_mgr.args_path.open().close()  # ensure file
-            os.startfile(str(arg_mgr.args_path))
-            logging.info("Opened arguments file")
+            os.startfile(str(self.arg_mgr.file_path))
+            logging.info("Opened arguments.txt in default editor")
         except Exception:
             logging.exception("Failed to open arguments file")
 
-    def _exit(self, server_mgr: ServerManager):
-        logging.info("Exiting application...")
-        server_mgr.stop()
+    def _exit(self) -> None:
+        logging.info("Exiting application")
+        self.server_mgr.stop()
         self.icon.stop()
 
-    def run(self):
+    def run(self) -> None:
         self.icon.run()
 
-
-# ─── Application Orchestration ──────────────────────────────────────────────
+# ─── Application Orchestration ───────────────────────────────────────────────
 
 class Application:
     def __init__(self):
         self.paths = Paths()
         self.arg_mgr = ArgumentManager(self.paths.arguments_file)
-        self.auto_mgr = AutoStartManager(
-            app_name="uxplay-windows",
-            exe_script=f'"{sys.executable}" "{self.paths.base_dir / Path(__file__).name}"',
-        )
+
+        # Build the registry value string
+        script_path = Path(__file__).resolve()
+        if getattr(sys, "frozen", False):
+            exe_script = f'"{sys.executable}"'
+        else:
+            exe_script = f'"{sys.executable}" "{script_path}"'
+
+        self.auto_mgr = AutoStartManager(APP_NAME, exe_script)
         self.server_mgr = ServerManager(self.paths.uxplay_exe, self.arg_mgr)
         self.tray = TrayIcon(
-            icon_path=self.paths.icon_file,
-            server_mgr=self.server_mgr,
-            arg_mgr=self.arg_mgr,
-            auto_mgr=self.auto_mgr,
+            self.paths.icon_file,
+            self.server_mgr,
+            self.arg_mgr,
+            self.auto_mgr
         )
 
-    def run(self):
+    def run(self) -> None:
         self.arg_mgr.ensure_exists()
 
-        # delayed startup so tray shows quickly
+        # Delay server start so the tray icon appears promptly
         threading.Thread(target=self._delayed_start, daemon=True).start()
 
-        logging.info("Launching tray icon")
+        logging.info("Starting system tray icon")
         self.tray.run()
-        logging.info("Tray exited, application stopping")
+        logging.info("Application terminated")
 
-    def _delayed_start(self):
+    def _delayed_start(self) -> None:
         time.sleep(3)
         self.server_mgr.start()
-
 
 if __name__ == "__main__":
     Application().run()
