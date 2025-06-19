@@ -248,7 +248,7 @@ class TrayIcon:
         )
 
         self.icon = pystray.Icon(
-            name=APP_NAME,
+            name=f"{APP_NAME}\nRight-click to configure.",
             icon=Image.open(icon_path),
             title=APP_NAME,
             menu=menu
