@@ -24,25 +24,24 @@ UXPLAY_PATH = os.path.join(BASE_DIR, "bin", "uxplay.exe")
 APPDATA_PATH = os.path.join(os.environ.get('APPDATA'), APP_NAME)
 ARGUMENTS_FILE_PATH = os.path.join(APPDATA_PATH, "arguments.txt")
 
-
 process = None
 SCRIPT_FOR_AUTOSTART = f'"{sys.executable}"'
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
+
 def ensure_appdata_structure():
-    """Ensures the %appdata%\uxplay-windows directory and arguments.txt file exist."""
     print(f"Ensuring application data directory: {APPDATA_PATH}")
     os.makedirs(APPDATA_PATH, exist_ok=True)
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         print(f"Creating default arguments file: {ARGUMENTS_FILE_PATH}")
         with open(ARGUMENTS_FILE_PATH, 'w') as f:
-            f.write('') # Create an empty file, users can add arguments later
+            f.write('')  # Create an empty file, users can add arguments later
         print("Default arguments.txt created.")
     else:
         print("arguments.txt already exists.")
 
+
 def get_user_arguments():
-    """Reads arguments from the arguments.txt file."""
     if not os.path.exists(ARGUMENTS_FILE_PATH):
         print(f"Warning: {ARGUMENTS_FILE_PATH} not found. No custom arguments will be used.")
         return []
@@ -60,6 +59,7 @@ def get_user_arguments():
         print(f"Error reading arguments from {ARGUMENTS_FILE_PATH}: {e}")
         return []
 
+
 def start_server():
     global process
     if process and process.poll() is None:
@@ -67,7 +67,7 @@ def start_server():
         return  # already running
 
     print("Attempting to start UxPlay server...")
-    
+
     # Get user-defined arguments
     user_args = get_user_arguments()
     command = [UXPLAY_PATH] + user_args
@@ -83,6 +83,7 @@ def start_server():
         print(f"Error: uxplay.exe not found at {UXPLAY_PATH}. Please ensure it exists.")
     except Exception as e:
         print(f"An error occurred while starting UxPlay: {e}")
+
 
 def stop_server():
     global process
@@ -103,10 +104,12 @@ def stop_server():
     elif process is None:
         print("UxPlay server is not running.")
 
+
 def restart_server(icon, item):
     print("Restarting UxPlay server...")
     stop_server()
     start_server()
+
 
 def is_autostart_enabled():
     try:
@@ -119,6 +122,7 @@ def is_autostart_enabled():
         print(f"Error checking autostart: {e}")
         return False
 
+
 def enable_autostart():
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
@@ -126,6 +130,7 @@ def enable_autostart():
         print(f"Autostart enabled for {APP_NAME} with value: {SCRIPT_FOR_AUTOSTART}")
     except Exception as e:
         print(f"Error enabling autostart: {e}")
+
 
 def disable_autostart():
     try:
@@ -137,32 +142,36 @@ def disable_autostart():
     except Exception as e:
         print(f"Error disabling autostart: {e}")
 
+
 def toggle_autostart(icon, item):
     if is_autostart_enabled():
         disable_autostart()
     else:
         enable_autostart()
 
+
 def open_arguments_file(icon, item):
-    """Opens the arguments.txt file in the default text editor."""
     if not os.path.exists(ARGUMENTS_FILE_PATH):
-        ensure_appdata_structure() # Ensure it exists before trying to open
+        ensure_appdata_structure()  # Ensure it exists before trying to open
     try:
-        os.startfile(ARGUMENTS_FILE_PATH) # Windows-specific way to open file with default app
+        os.startfile(ARGUMENTS_FILE_PATH)  # Windows-specific way to open file with default app
         print(f"Opened arguments file: {ARGUMENTS_FILE_PATH}")
     except Exception as e:
         print(f"Error opening arguments file: {e}")
         print("You can manually navigate to:")
         print(APPDATA_PATH)
 
+
 def show_license(icon, item):
     webbrowser.open('https://github.com/leapbtw/uxplay-windows/blob/main/LICENSE.md')
+
 
 def exit_tray_icon(icon, item):
     print("Exiting application...")
     stop_server()
     icon.stop()
     print("Application exited.")
+
 
 def main():
     # Ensure AppData structure exists before anything else
@@ -181,7 +190,7 @@ def main():
                 toggle_autostart,
                 checked=lambda item: is_autostart_enabled()
             ),
-            pystray.MenuItem("Edit UxPlay Arguments", open_arguments_file), # New menu item
+            pystray.MenuItem("Edit UxPlay Arguments", open_arguments_file),  # New menu item
             pystray.MenuItem("License", show_license),
             pystray.MenuItem("Exit", exit_tray_icon)
         )
@@ -197,6 +206,7 @@ def main():
     print("Starting tray icon...")
     tray_icon.run()
     print("Tray icon stopped.")
+
 
 if __name__ == "__main__":
     main()
