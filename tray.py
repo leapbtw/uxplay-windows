@@ -17,7 +17,7 @@ from PIL import Image
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 APP_NAME = "uxplay-windows"
-APPDATA_DIR = Path(os.environ["APPDATA"]) / "windows-uxplay"
+APPDATA_DIR = Path(os.environ["APPDATA"]) / "uxplay-windows"
 LOG_FILE = APPDATA_DIR / f"{APP_NAME}.log"
 
 # ensure the AppData folder exists up front:
