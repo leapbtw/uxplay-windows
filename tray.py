@@ -17,7 +17,7 @@ else:
 # Correct file paths
 TRAY_ICON_PATH = os.path.join(BASE_DIR, "icon.ico")
 UXPLAY_PATH = os.path.join(BASE_DIR, "bin", "uxplay.exe")
-# Ensure the icon file exists before trying to open it
+IMAGE = PIL.Image.open(TRAY_ICON_PATH)
 
 process = None
 APP_NAME = "uxplay-windows"
