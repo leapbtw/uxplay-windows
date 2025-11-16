@@ -41,6 +41,10 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 - make colored icon to show if uxplay is running or not
 - make an update checker
 
+## Known Issues
+- uxplay bugs out when waking PC from Sleep
+  - you can fix this by killing uxplay.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.
+
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
 
