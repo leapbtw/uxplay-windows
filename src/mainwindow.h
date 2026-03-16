@@ -1,10 +1,13 @@
 #pragma once
 
+#include <QLabel>
 #include <QMainWindow>
+#include <QPushButton>
+#include <QSystemTrayIcon>
 
-class QLineEdit;
-class QPushButton;
-class QLabel;
+class QMenu;
+class QAction;
+class QTimer;
 class AirPlayWorker;
 
 class MainWindow : public QMainWindow {
@@ -18,18 +21,40 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void onStartClicked();
-    void onStopClicked();
+    void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
+    void restartServer();
+    void toggleAutostart();
+    void showLicense();
+    void quit();
     void onAirplayStarted();
     void onAirplayStopped();
     void onAirplayError(const QString &message);
+    void onRestartTimerTick();
 
 private:
-    void setRunning(bool running);
+    void startServer();
+    void stopServer();
+    void setupTray();
+    void setupUI();
+    void updateStatus();
+    bool isAutostartEnabled() const;
+    void setAutostart(bool enabled);
 
-    QLineEdit *m_nameEdit;
-    QPushButton *m_startBtn;
-    QPushButton *m_stopBtn;
-    QLabel *m_statusLabel;
+    QSystemTrayIcon *m_tray = nullptr;
+    QMenu *m_trayMenu = nullptr;
+    QAction *m_autostartAction = nullptr;
+    QAction *m_statusAction = nullptr;
+
+    QPushButton *m_restartBtn = nullptr;
+    QPushButton *m_autostartBtn = nullptr;
+    QPushButton *m_licenseBtn = nullptr;
+    QLabel *m_statusLabel = nullptr;
+
     AirPlayWorker *m_worker = nullptr;
+    QTimer *m_restartTimer = nullptr;
+
+    bool m_running = false;
+    bool m_quitting = false;
+
+    static constexpr int RESTART_INTERVAL_MS = 30 * 60 * 1000;
 };

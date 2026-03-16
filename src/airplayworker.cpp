@@ -15,6 +15,8 @@ void AirPlayWorker::setExtraArgs(const QStringList &args) {
 }
 
 void AirPlayWorker::run() {
+    m_shouldStop = 0;
+
     QStringList argList;
     argList << "uxplay";
     argList << "-n" << m_serverName;
@@ -51,5 +53,6 @@ void AirPlayWorker::run() {
 }
 
 void AirPlayWorker::stopAirplay() {
+    m_shouldStop = 1;
     stop_uxplay();
 }

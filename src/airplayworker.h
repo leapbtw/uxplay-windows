@@ -22,6 +22,7 @@ protected:
     void run() override;
 
 private:
+    QAtomicInt m_shouldStop{0};
     QString m_serverName = "uxplay-windows";
     QStringList m_extraArgs;
 };
