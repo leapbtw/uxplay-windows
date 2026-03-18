@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "airplayworker.h"
 
+#include <QProcess>
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
@@ -131,18 +132,35 @@ void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason) {
 void MainWindow::startServer() {
     if (m_worker && m_worker->isRunning()) return;
 
+    QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(appData);
+    QString bleFilePath = QDir::toNativeSeparators(appData + "/uxplay_status.ble");
+
+    QStringList args = getArgumentsFromFile();
+    
+    int bleIdx = args.indexOf("-ble");
+    if (bleIdx != -1) {
+        args.removeAt(bleIdx);
+        if (bleIdx < args.size() && !args[bleIdx].startsWith("-")) {
+            args.removeAt(bleIdx);
+        }
+    }
+    args << "-ble" << bleFilePath;
+
     m_worker = new AirPlayWorker(this);
-    m_worker->setArgs(getArgumentsFromFile());
+    m_worker->setArgs(args);
 
     connect(m_worker, &AirPlayWorker::started, this, &MainWindow::onAirplayStarted);
     connect(m_worker, &AirPlayWorker::stopped, this, &MainWindow::onAirplayStopped);
-    connect(m_worker, &AirPlayWorker::errorOccurred, this, &MainWindow::onAirplayError);
     connect(m_worker, &AirPlayWorker::finished, m_worker, &QObject::deleteLater);
 
     m_worker->start();
+
+    startBeacon(bleFilePath);
 }
 
 void MainWindow::stopServer() {
+    stopBeacon();
     if (m_worker) {
         m_worker->disconnect();
         if (m_worker->isRunning()) {
@@ -192,6 +210,40 @@ void MainWindow::setAutostart(bool enabled) {
     } else {
         reg.remove("uxplay-windows");
     }
+}
+
+void MainWindow::startBeacon(const QString &path) {
+    if (m_beacon && m_beacon->state() != QProcess::NotRunning)
+        return;
+
+    QString exe = QApplication::applicationDirPath() + "/uxplay-beacon.exe";
+    if (!QFile::exists(exe)) {
+        qDebug() << "uxplay-beacon.exe not found";
+        return;
+    }
+
+    m_beacon = new QProcess(this);
+    m_beacon->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(m_beacon, &QProcess::readyRead, this, [this]() {
+        // Forward beacon logs to our debug console
+        qDebug() << "[beacon output]" << m_beacon->readAll().trimmed();
+    });
+
+    // Pass the explicit path to the beacon
+    m_beacon->start(exe, {"--path", path});
+    qDebug() << "Beacon process started watching:" << path;
+}
+
+void MainWindow::stopBeacon() {
+    if (!m_beacon) return;
+    if (m_beacon->state() != QProcess::NotRunning) {
+        m_beacon->terminate();
+        if (!m_beacon->waitForFinished(2000))
+            m_beacon->kill();
+    }
+    m_beacon->deleteLater();
+    m_beacon = nullptr;
 }
 
 void MainWindow::showLicense() {

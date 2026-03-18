@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QSystemTrayIcon>
+#include <QProcess>
 
 class QMenu;
 class QAction;
@@ -35,7 +36,11 @@ private:
     void setupTray();
     void setupUI();
     void updateStatus();
+    void startBeacon(const QString &path);
+    void stopBeacon();
     
+    QProcess *m_beacon = nullptr;
+
     QStringList getArgumentsFromFile();
     void ensureSettingsFileExists();
     
