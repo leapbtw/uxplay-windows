@@ -247,7 +247,7 @@ void MainWindow::stopBeacon() {
 }
 
 void MainWindow::showLicense() {
-    QString path = QApplication::applicationDirPath() + "/LICENSE";
+    QString path = QApplication::applicationDirPath() + "/LICENSE.md";
     if (QFile::exists(path)) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
