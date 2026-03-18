@@ -10,7 +10,8 @@ find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
 # build uxplay as a static library
 add_subdirectory(libuxplay)
 
-add_executable(uxplay-windows
+# the WIN32 flag here tells Windows this is a GUI app, not a Console app
+add_executable(uxplay-windows WIN32
     src/main.cpp
     src/mainwindow.cpp
     src/airplayworker.cpp

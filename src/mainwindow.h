@@ -7,7 +7,6 @@
 
 class QMenu;
 class QAction;
-class QTimer;
 class AirPlayWorker;
 
 class MainWindow : public QMainWindow {
@@ -22,14 +21,13 @@ protected:
 
 private slots:
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
-    void restartServer();
     void toggleAutostart();
     void showLicense();
+    void openSettingsFile();
     void quit();
     void onAirplayStarted();
     void onAirplayStopped();
     void onAirplayError(const QString &message);
-    void onRestartTimerTick();
 
 private:
     void startServer();
@@ -37,6 +35,10 @@ private:
     void setupTray();
     void setupUI();
     void updateStatus();
+    
+    QStringList getArgumentsFromFile();
+    void ensureSettingsFileExists();
+    
     bool isAutostartEnabled() const;
     void setAutostart(bool enabled);
 
@@ -45,16 +47,13 @@ private:
     QAction *m_autostartAction = nullptr;
     QAction *m_statusAction = nullptr;
 
-    QPushButton *m_restartBtn = nullptr;
     QPushButton *m_autostartBtn = nullptr;
+    QPushButton *m_settingsBtn = nullptr;
     QPushButton *m_licenseBtn = nullptr;
     QLabel *m_statusLabel = nullptr;
 
     AirPlayWorker *m_worker = nullptr;
-    QTimer *m_restartTimer = nullptr;
 
     bool m_running = false;
     bool m_quitting = false;
-
-    static constexpr int RESTART_INTERVAL_MS = 30 * 60 * 1000;
 };

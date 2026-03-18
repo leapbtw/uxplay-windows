@@ -8,9 +8,7 @@ class AirPlayWorker : public QThread {
 
 public:
     explicit AirPlayWorker(QObject *parent = nullptr);
-
-    void setServerName(const QString &name);
-    void setExtraArgs(const QStringList &args);
+    void setArgs(const QStringList &args);
     void stopAirplay();
 
 signals:
@@ -22,7 +20,5 @@ protected:
     void run() override;
 
 private:
-    QAtomicInt m_shouldStop{0};
-    QString m_serverName = "uxplay-windows";
-    QStringList m_extraArgs;
+    QStringList m_args;
 };

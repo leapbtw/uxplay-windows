@@ -6,28 +6,24 @@
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QDir>
-#include <QHBoxLayout>
+#include <QFile>
 #include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QStyle>
 #include <QSystemTrayIcon>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QTextStream>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+    ensureSettingsFileExists();
     setupUI();
     setupTray();
-
-    m_restartTimer = new QTimer(this);
-    m_restartTimer->setInterval(RESTART_INTERVAL_MS);
-    connect(m_restartTimer, &QTimer::timeout, this,
-            &MainWindow::onRestartTimerTick);
-
-    // Auto-start server on launch
     startServer();
 }
 
@@ -36,205 +32,174 @@ MainWindow::~MainWindow() {
     stopServer();
 }
 
-// ── UI ──────────────────────────────────────────────────────────────
+void MainWindow::ensureSettingsFileExists() {
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(appDataPath);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    QString filePath = appDataPath + "/arguments.txt";
+    QFile file(filePath);
+    if (!file.exists()) {
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out << "-n uxplay-windows -nh";
+            file.close();
+        }
+    }
+}
+
+QStringList MainWindow::getArgumentsFromFile() {
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QFile file(appDataPath + "/arguments.txt");
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString content = QTextStream(&file).readAll().trimmed();
+        file.close();
+        return content.split(" ", Qt::SkipEmptyParts);
+    }
+    return QStringList() << "-n" << "uxplay-windows" << "-nh";
+}
 
 void MainWindow::setupUI() {
     setWindowTitle("uxplay-windows");
-    setFixedSize(320, 180);
+    setFixedSize(300, 180);
 
     auto *central = new QWidget(this);
     setCentralWidget(central);
     auto *layout = new QVBoxLayout(central);
 
-    m_statusLabel = new QLabel(this);
+    m_statusLabel = new QLabel("Initializing...", this);
     m_statusLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(m_statusLabel);
 
-    m_restartBtn = new QPushButton("Restart Server", this);
-    connect(m_restartBtn, &QPushButton::clicked, this,
-            &MainWindow::restartServer);
-    layout->addWidget(m_restartBtn);
+    m_settingsBtn = new QPushButton("Edit Server Settings", this);
+    connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettingsFile);
+    layout->addWidget(m_settingsBtn);
 
     m_autostartBtn = new QPushButton(this);
-    connect(m_autostartBtn, &QPushButton::clicked, this,
-            &MainWindow::toggleAutostart);
+    connect(m_autostartBtn, &QPushButton::clicked, this, &MainWindow::toggleAutostart);
     layout->addWidget(m_autostartBtn);
 
-    m_licenseBtn = new QPushButton("License", this);
-    connect(m_licenseBtn, &QPushButton::clicked, this,
-            &MainWindow::showLicense);
+    m_licenseBtn = new QPushButton("License Information", this);
+    connect(m_licenseBtn, &QPushButton::clicked, this, &MainWindow::showLicense);
     layout->addWidget(m_licenseBtn);
 
     layout->addStretch();
     updateStatus();
 }
 
-// ── Tray ────────────────────────────────────────────────────────────
+void MainWindow::openSettingsFile() {
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString filePath = appDataPath + "/arguments.txt";
+    QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+    
+    m_tray->showMessage("Settings", "Restart the app or disconnect current session to apply new arguments.", 
+                        QSystemTrayIcon::Information, 3000);
+}
 
 void MainWindow::setupTray() {
     m_tray = new QSystemTrayIcon(this);
-    m_tray->setIcon(QApplication::style()->standardIcon(
-        QStyle::SP_MediaPlay));
+    m_tray->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
     m_tray->setToolTip("uxplay-windows");
 
     m_trayMenu = new QMenu(this);
-
-    m_statusAction = m_trayMenu->addAction("Status: starting...");
+    m_statusAction = m_trayMenu->addAction("Status: offline");
     m_statusAction->setEnabled(false);
     m_trayMenu->addSeparator();
 
-    m_trayMenu->addAction("Restart Server", this,
-                          &MainWindow::restartServer);
+    m_trayMenu->addAction("Edit Settings", this, &MainWindow::openSettingsFile);
 
-    m_autostartAction =
-        m_trayMenu->addAction("Run at Startup", this,
-                              &MainWindow::toggleAutostart);
+    m_autostartAction = m_trayMenu->addAction("Run at Startup", this, &MainWindow::toggleAutostart);
     m_autostartAction->setCheckable(true);
     m_autostartAction->setChecked(isAutostartEnabled());
 
-    m_trayMenu->addAction("License", this, &MainWindow::showLicense);
     m_trayMenu->addSeparator();
     m_trayMenu->addAction("Quit", this, &MainWindow::quit);
 
     m_tray->setContextMenu(m_trayMenu);
-
-    connect(m_tray, &QSystemTrayIcon::activated, this,
-            &MainWindow::onTrayActivated);
-
+    connect(m_tray, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivated);
     m_tray->show();
 }
 
-void MainWindow::onTrayActivated(
-    QSystemTrayIcon::ActivationReason reason) {
-    if (reason == QSystemTrayIcon::Trigger) { // left click
-        if (isVisible()) {
-            hide();
-        } else {
-            showNormal();
-            activateWindow();
-            raise();
-        }
+void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason) {
+    if (reason == QSystemTrayIcon::Trigger) {
+        isVisible() ? hide() : showNormal();
     }
 }
 
-// ── Server lifecycle ────────────────────────────────────────────────
-
 void MainWindow::startServer() {
-    if (m_worker && m_worker->isRunning()) {
-        return;
-    }
+    if (m_worker && m_worker->isRunning()) return;
 
     m_worker = new AirPlayWorker(this);
-    m_worker->setServerName("uxplay-windows");
+    m_worker->setArgs(getArgumentsFromFile());
 
-    connect(m_worker, &AirPlayWorker::started, this,
-            &MainWindow::onAirplayStarted);
-    connect(m_worker, &AirPlayWorker::stopped, this,
-            &MainWindow::onAirplayStopped);
-    connect(m_worker, &AirPlayWorker::errorOccurred, this,
-            &MainWindow::onAirplayError);
-    connect(m_worker, &AirPlayWorker::finished, m_worker,
-            &QObject::deleteLater);
+    connect(m_worker, &AirPlayWorker::started, this, &MainWindow::onAirplayStarted);
+    connect(m_worker, &AirPlayWorker::stopped, this, &MainWindow::onAirplayStopped);
+    connect(m_worker, &AirPlayWorker::errorOccurred, this, &MainWindow::onAirplayError);
+    connect(m_worker, &AirPlayWorker::finished, m_worker, &QObject::deleteLater);
 
     m_worker->start();
-    m_restartTimer->start();
 }
 
 void MainWindow::stopServer() {
-    m_restartTimer->stop();
-    if (m_worker && m_worker->isRunning()) {
-        m_worker->stopAirplay();
-        if (!m_worker->wait(1000)) { // Wait 3 seconds
-            m_worker->terminate();   // Force kill the thread if it's stuck on 10038
-            m_worker->wait();
+    if (m_worker) {
+        m_worker->disconnect();
+        if (m_worker->isRunning()) {
+            m_worker->stopAirplay();
+            m_worker->wait(2000);
         }
+        m_worker = nullptr;
     }
-    m_worker = nullptr;
     m_running = false;
     updateStatus();
 }
 
-void MainWindow::restartServer() {
-    stopServer();
-    startServer();
-}
-
-void MainWindow::onRestartTimerTick() {
-    // Only restart if the worker is null or not running
-    if (!m_worker || !m_worker->isRunning()) {
-        startServer();
-    }
-}
-
 void MainWindow::onAirplayStarted() {
     m_running = true;
-    m_restartTimer->start(); // reset the 30-min countdown
     updateStatus();
 }
 
 void MainWindow::onAirplayStopped() {
     m_running = false;
     updateStatus();
-
-    // Auto-restart unless we're quitting
     if (!m_quitting) {
-        QTimer::singleShot(500, this, &MainWindow::startServer);
+        QTimer::singleShot(2000, this, &MainWindow::startServer);
     }
 }
 
 void MainWindow::onAirplayError(const QString &message) {
-    m_running = false;
-    updateStatus();
-    m_tray->showMessage("uxplay-windows", message,
-                        QSystemTrayIcon::Warning, 3000);
-}
-
-// ── Autostart (Windows Registry) ────────────────────────────────────
-
-static const QString REG_RUN_KEY =
-    "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-static const QString APP_NAME = "uxplay-windows";
-
-bool MainWindow::isAutostartEnabled() const {
-    QSettings reg(REG_RUN_KEY, QSettings::NativeFormat);
-    return reg.contains(APP_NAME);
-}
-
-void MainWindow::setAutostart(bool enabled) {
-    QSettings reg(REG_RUN_KEY, QSettings::NativeFormat);
-    if (enabled) {
-        QString exePath =
-            QDir::toNativeSeparators(QApplication::applicationFilePath());
-        reg.setValue(APP_NAME, "\"" + exePath + "\"");
-    } else {
-        reg.remove(APP_NAME);
-    }
+    m_tray->showMessage("uxplay-windows", message, QSystemTrayIcon::Warning, 3000);
 }
 
 void MainWindow::toggleAutostart() {
     bool enable = !isAutostartEnabled();
     setAutostart(enable);
     m_autostartAction->setChecked(enable);
-    m_autostartBtn->setText(enable ? "Disable Autostart"
-                                  : "Enable Autostart");
+    updateStatus();
 }
 
-// ── License ─────────────────────────────────────────────────────────
+bool MainWindow::isAutostartEnabled() const {
+    QSettings reg("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+    return reg.contains("uxplay-windows");
+}
 
-void MainWindow::showLicense() {
-    QString licensePath =
-        QApplication::applicationDirPath() + "/LICENSE.md";
-    if (QFile::exists(licensePath)) {
-        QDesktopServices::openUrl(
-            QUrl::fromLocalFile(licensePath));
+void MainWindow::setAutostart(bool enabled) {
+    QSettings reg("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+    if (enabled) {
+        QString path = QDir::toNativeSeparators(QApplication::applicationFilePath());
+        reg.setValue("uxplay-windows", "\"" + path + "\"");
     } else {
-        QMessageBox::information(
-            this, "License",
-            "LICENSE.md not found next to the executable.");
+        reg.remove("uxplay-windows");
     }
 }
 
-// ── Quit / Close ────────────────────────────────────────────────────
+void MainWindow::showLicense() {
+    QString path = QApplication::applicationDirPath() + "/LICENSE";
+    if (QFile::exists(path)) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    }
+}
 
 void MainWindow::quit() {
     m_quitting = true;
@@ -243,26 +208,17 @@ void MainWindow::quit() {
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-    // Close button hides to tray instead of quitting
     if (!m_quitting) {
         hide();
         event->ignore();
-        m_tray->showMessage(
-            "uxplay-windows", "Still running in the system tray.",
-            QSystemTrayIcon::Information, 2000);
     } else {
         event->accept();
     }
 }
 
-// ── Status ──────────────────────────────────────────────────────────
 void MainWindow::updateStatus() {
     QString status = m_running ? "Server running" : "Server stopped";
     m_statusLabel->setText(status);
-    m_autostartBtn->setText(isAutostartEnabled() ? "Disable Autostart"
-                                                 : "Enable Autostart");
-
-    if (m_statusAction) {
-        m_statusAction->setText("Status: " + status.toLower());
-    }
+    m_autostartBtn->setText(isAutostartEnabled() ? "Disable Autostart" : "Enable Autostart");
+    if (m_statusAction) m_statusAction->setText("Status: " + status.toLower());
 }
