@@ -17,7 +17,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputBaseFilename=uxplay-windows
-SetupIconFile=D:\a\uxplay-windows\uxplay-windows\icon.ico
+SetupIconFile={#SourcePath}\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -29,8 +29,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\uxplay-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourcePath}\dist\uxplay-windows\uxplay-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}\dist\uxplay-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
