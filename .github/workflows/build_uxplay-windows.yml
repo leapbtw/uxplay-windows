@@ -74,8 +74,8 @@ jobs:
         # remove unnecessary DLLs so we get a smaller installer
       - name: Prune compilation artifact directory
         run: |
-          $artifactDir = "D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact"
-          $keepListFile = "D:\a\uxplay-windows\uxplay-windows\dll-libs-list.txt"
+          $artifactDir = "$env:GITHUB_WORKSPACE\UxPlay\build\artifact"
+          $keepListFile = "$env:GITHUB_WORKSPACE\dll-libs-list.txt"
           
           # Read patterns from the keep list (can include wildcards)
           $keepPatterns = @()
@@ -131,8 +131,8 @@ jobs:
 
           pyinstaller --noconsole --onedir --clean --name uxplay-windows --icon=icon.ico tray.py
 
-          cp -r D:\a\uxplay-windows\uxplay-windows\UxPlay\build\artifact\* D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\_internal
-          cp D:\a\uxplay-windows\uxplay-windows\icon.ico D:\a\uxplay-windows\uxplay-windows\dist\uxplay-windows\_internal
+          cp -r $env:GITHUB_WORKSPACE\UxPlay\build\artifact\* $env:GITHUB_WORKSPACE\dist\uxplay-windows\_internal
+          cp $env:GITHUB_WORKSPACE\icon.ico $env:GITHUB_WORKSPACE\dist\uxplay-windows\_internal
           
       - name: compile the installer with inno setup
         run: .$(Join-Path -Path ${env:PROGRAMFILES(X86)} -ChildPath 'Inno Setup 6\\ISCC.exe') $(Join-Path -Path $(Get-Location) -ChildPath "script.iss")
