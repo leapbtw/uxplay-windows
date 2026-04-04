@@ -363,6 +363,8 @@ class TrayIcon:
             logging.exception("Failed to open arguments.txt")
 
     def _open_logs(self):
+        """Open log file in Notepad."""
+        self.arg_mgr.ensure_exists()
         try:
             os.startfile(str(self.log_file))
             logging.info("Opened log file")
