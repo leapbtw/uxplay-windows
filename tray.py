@@ -366,7 +366,7 @@ class TrayIcon:
         """Open log file in Notepad."""
         self.arg_mgr.ensure_exists()
         try:
-            os.startfile(str(self.log_file))
+            subprocess.Popen(["notepad.exe", str(self.log_file)])
             logging.info("Opened log file")
         except Exception:
             logging.exception("Failed to open log file")
