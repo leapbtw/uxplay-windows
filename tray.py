@@ -14,14 +14,19 @@ from typing import List, Optional
 import pystray
 from PIL import Image
 
+
+
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 APP_NAME = "uxplay-windows"
 APPDATA_DIR = Path(os.environ["APPDATA"]) / "uxplay-windows"
 LOG_FILE = APPDATA_DIR / f"{APP_NAME}.log"
+RECORDINGS_DIR = Path(os.environ.get("USERPROFILE", os.environ.get("HOME", ""))) / "Videos" / "iPad-Recordings"
+RECORD_FLAG = "-mp4"
 
 # ensure the AppData folder exists up front:
 APPDATA_DIR.mkdir(parents=True, exist_ok=True)
+RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 
@@ -91,11 +96,54 @@ class ArgumentManager:
         text = self.file_path.read_text(encoding="utf-8").strip()
         if not text:
             return []
-        try:
-            return shlex.split(text)
-        except ValueError as e:
-            logging.error("Could not parse arguments.txt: %s", e)
-            return []
+        # Simple split by whitespace — don't use shlex.split() on Windows paths
+        # because it interprets backslashes as escape characters
+        args = text.split()
+        # Strip surrounding quotes that may have been accidentally left
+        cleaned = []
+        for arg in args:
+            if arg.startswith('"') and arg.endswith('"'):
+                cleaned.append(arg[1:-1])
+            elif arg.startswith("'") and arg.endswith("'"):
+                cleaned.append(arg[1:-1])
+            else:
+                cleaned.append(arg)
+        return cleaned
+
+    def is_recording_enabled(self) -> bool:
+        args = self.read_args()
+        return RECORD_FLAG in args
+
+    def toggle_recording(self) -> bool:
+        """Toggle recording on/off. Returns new state."""
+        args = self.read_args()
+
+        if RECORD_FLAG in args:
+            # Remove -mp4 and its argument (recording path)
+            new_args = []
+            skip_next = False
+            for arg in args:
+                if skip_next:
+                    skip_next = False
+                    continue
+                if arg == RECORD_FLAG:
+                    skip_next = True  # skip next arg (path)
+                    continue
+                new_args.append(arg)
+            new_text = " ".join(new_args)
+            self.file_path.write_text(new_text, encoding="utf-8")
+            logging.info("Recording disabled")
+            return False
+        else:
+            # Add -mp4 with timestamped filename
+            ts = time.strftime("%Y-%m-%d_%H-%M-%S")
+            recording_path = str(RECORDINGS_DIR / f"iPad-Screen_{ts}.mp4")
+            args.append(RECORD_FLAG)
+            args.append(recording_path)
+            new_text = " ".join(args)
+            self.file_path.write_text(new_text, encoding="utf-8")
+            logging.info("Recording enabled: %s", recording_path)
+            return True
 
 # ─── Server Process Manager ──────────────────────────────────────────────────
 
@@ -117,9 +165,14 @@ class ServerManager:
         cmd = [str(self.exe_path)] + self.arg_mgr.read_args()
         logging.info("Starting UxPlay: %s", cmd)
         try:
+            # Add uxplay's bin directory to PATH so GStreamer plugins can find their DLLs
+            uxplay_bin = self.exe_path.parent
+            new_env = dict(os.environ)
+            new_env["PATH"] = str(uxplay_bin) + os.pathsep + new_env.get("PATH", "")
             self.process = subprocess.Popen(
                 cmd,
-                creationflags=subprocess.CREATE_NO_WINDOW
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                env=new_env
             )
             logging.info("Started UxPlay (PID %s)", self.process.pid)
         except Exception:
@@ -218,11 +271,13 @@ class TrayIcon:
         icon_path: Path,
         server_mgr: ServerManager,
         arg_mgr: ArgumentManager,
-        auto_mgr: AutoStartManager
+        auto_mgr: AutoStartManager,
+        log_file: Path
     ):
         self.server_mgr = server_mgr
         self.arg_mgr = arg_mgr
         self.auto_mgr = auto_mgr
+        self.log_file = log_file
 
         menu = pystray.Menu(
             pystray.MenuItem("Start UxPlay", lambda _: server_mgr.start()),
@@ -238,6 +293,10 @@ class TrayIcon:
                 lambda _: self._open_args()
             ),
             pystray.MenuItem(
+                "View Logs",
+                lambda _: self._open_logs()
+            ),
+            pystray.MenuItem(
                 "License",
                 lambda _: webbrowser.open(
                     "https://github.com/leapbtw/uxplay-windows/blob/"
@@ -248,27 +307,73 @@ class TrayIcon:
         )
 
         self.icon = pystray.Icon(
-            name=f"{APP_NAME}\nRight-click to configure.",
+            name=APP_NAME,
             icon=Image.open(icon_path),
             title=APP_NAME,
             menu=menu
         )
+        self._stop_monitoring = False
+        self._monitor_thread = threading.Thread(target=self._monitor_status, daemon=True)
+        self._monitor_thread.start()
+
+    def _monitor_status(self):
+        """Periodically update tray tooltip with server status."""
+        while not self._stop_monitoring:
+            try:
+                proc = self.server_mgr.process
+                if proc is not None:
+                    exit_code = proc.poll()
+                    if exit_code is None:
+                        self.icon.title = f"{APP_NAME} - Running"
+                    else:
+                        self.icon.title = f"{APP_NAME} - Stopped (exit {exit_code})"
+                else:
+                    self.icon.title = f"{APP_NAME} - Stopped"
+            except Exception as e:
+                self.icon.title = APP_NAME
+            time.sleep(5)
 
     def _restart(self):
         logging.info("Restarting UxPlay")
         self.server_mgr.stop()
         self.server_mgr.start()
+        time.sleep(1)
+        if self.server_mgr.process and self.server_mgr.process.poll() is None:
+            self.icon.title = f"{APP_NAME} - Running"
+        else:
+            self.icon.title = f"{APP_NAME} - Stopped"
+
+    def _toggle_recording(self):
+        new_state = self.arg_mgr.toggle_recording()
+        if new_state:
+            self.server_mgr.stop()
+            self.server_mgr.start()
+            time.sleep(1)
+            if self.server_mgr.process and self.server_mgr.process.poll() is None:
+                self.icon.title = f"{APP_NAME} - Running"
+            else:
+                self.icon.title = f"{APP_NAME} - Stopped"
 
     def _open_args(self):
         self.arg_mgr.ensure_exists()
         try:
             os.startfile(str(self.arg_mgr.file_path))
-            logging.info("Opened arguments.txt")
+            logging.info("Opened arguments.txt in Notepad")
         except Exception:
             logging.exception("Failed to open arguments.txt")
 
+    def _open_logs(self):
+        """Open log file in Notepad."""
+        self.arg_mgr.ensure_exists()
+        try:
+            subprocess.Popen(["notepad.exe", str(self.log_file)])
+            logging.info("Opened log file")
+        except Exception:
+            logging.exception("Failed to open log file")
+
     def _exit(self):
         logging.info("Exiting tray")
+        self._stop_monitoring = True
         self.server_mgr.stop()
         self.icon.stop()
 
@@ -295,7 +400,8 @@ class Application:
             self.paths.icon_file,
             self.server_mgr,
             self.arg_mgr,
-            self.auto_mgr
+            self.auto_mgr,
+            LOG_FILE
         )
 
     def run(self):
