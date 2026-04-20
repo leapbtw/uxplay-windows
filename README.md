@@ -1,6 +1,10 @@
 > [!NOTE]
-> (16 mar 2026) i am actively working on an update for uxplay-windows on other branches
-> the goal is to make a better and less buggy software, and hopefully drop the Bonjour dependency
+> (16 mar 2026) \
+> I am actively working on an update for uxplay-windows on other branches. \
+> The goal is to make a better and less buggy software, and hopefully drop the Bonjour dependency \
+> (20 apr 2026) \
+> I've now merged the cpp rewrite into main. Automatic builds when forking are most likely broken. \
+> I'll work on finish the rewrite and then i'll worry about it.
 
 # FREE AirPlay to your Windows PC
 Free as both in "freedom" and "free beer"!
