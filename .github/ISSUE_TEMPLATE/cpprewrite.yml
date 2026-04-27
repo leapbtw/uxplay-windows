@@ -1,3 +1,4 @@
+blank_issues_enabled: false
 name: ⚠️ Rewrite in Progress
 description: Important notice before opening an issue
 title: "[READ BEFORE OPENING] "
