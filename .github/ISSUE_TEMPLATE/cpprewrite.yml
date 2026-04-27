@@ -1,0 +1,31 @@
+name: ⚠️ Rewrite in Progress
+description: Important notice before opening an issue
+title: "[READ BEFORE OPENING] "
+labels: ["invalid"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **README I'M VERY IMPORTANT: uxplay-windows IS CURRENTLY BEING REWRITTEN**
+
+        If you're using uxplay-windows downloaded from the releases tab in this repo, please understand that
+        issues like pairing and crashes are known. The UxPlay version used for that release it's old at this
+        point and i am not going to update it because i am working on a full rewrite of uxplay-windows.
+
+        Please only open an issue if:
+        - It is about the c++/Qt rewrite itself
+        - You understand how uxplay-windows works and the issue could help development
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: I understand that this version is obsolete and my issue may be closed
+          required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: Describe your issue
+      description: Explain clearly why this issue is still relevant despite the rewrite
