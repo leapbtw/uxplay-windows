@@ -24,12 +24,20 @@ void AirPlayWorker::run() {
 
     qDebug() << "Starting UxPlay engine with arguments:" << m_args;
     emit started();
-    
-    int ret = start_uxplay(static_cast<int>(argv.size()), argv.data());
 
-    if (ret != 0) {
-        emit errorOccurred(QString("Engine exited with code %1").arg(ret));
+    int ret = 0;
+
+    // Loop con controllo di interruzione
+    while (!isInterruptionRequested()) {
+        ret = start_uxplay(static_cast<int>(argv.size()), argv.data());
+
+        // Se il processo termina, esci dal loop
+        if (ret != 0) {
+            emit errorOccurred(QString("Engine exited with code %1").arg(ret));
+            break;
+        }
     }
+
     emit stopped();
 }
 

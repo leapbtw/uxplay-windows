@@ -20,11 +20,12 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QTextStream>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     ensureSettingsFileExists();
-    setupUI();
     setupTray();
+    setupUI();
     startServer();
 }
 
@@ -64,7 +65,7 @@ QStringList MainWindow::getArgumentsFromFile() {
 
 void MainWindow::setupUI() {
     setWindowTitle("uxplay-windows");
-    setFixedSize(300, 180);
+    setFixedSize(300, 220);
 
     auto *central = new QWidget(this);
     setCentralWidget(central);
@@ -73,6 +74,13 @@ void MainWindow::setupUI() {
     m_statusLabel = new QLabel("Initializing...", this);
     m_statusLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(m_statusLabel);
+
+    // Bluetooth Discovery Checkbox
+    m_bleCheckbox = new QCheckBox("Enable Bluetooth Discovery", this);
+    QSettings settings;
+    m_bleCheckbox->setChecked(settings.value("ble_enabled", true).toBool());
+    connect(m_bleCheckbox, &QCheckBox::toggled, this, &MainWindow::toggleBle);
+    layout->addWidget(m_bleCheckbox);
 
     m_settingsBtn = new QPushButton("Edit Server Settings", this);
     connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettingsFile);
@@ -105,20 +113,10 @@ void MainWindow::setupTray() {
     m_tray->setToolTip("uxplay-windows");
 
     m_trayMenu = new QMenu(this);
-    m_statusAction = m_trayMenu->addAction("Status: offline");
-    m_statusAction->setEnabled(false);
-    m_trayMenu->addSeparator();
-
-    m_trayMenu->addAction("Edit Settings", this, &MainWindow::openSettingsFile);
-
-    m_autostartAction = m_trayMenu->addAction("Run at Startup", this, &MainWindow::toggleAutostart);
-    m_autostartAction->setCheckable(true);
-    m_autostartAction->setChecked(isAutostartEnabled());
-
-    m_trayMenu->addSeparator();
     m_trayMenu->addAction("Quit", this, &MainWindow::quit);
 
     m_tray->setContextMenu(m_trayMenu);
+    
     connect(m_tray, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivated);
     m_tray->show();
 }
@@ -129,13 +127,24 @@ void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason) {
     }
 }
 
+void MainWindow::toggleBle(bool checked) {
+    QSettings settings;
+    
+    if (settings.value("ble_enabled").toBool() == checked) {
+        return;
+    }
+
+    settings.setValue("ble_enabled", checked);
+    
+    QMessageBox::information(this, "uxplay-windows", "Please restart the uxplay-windows to apply changes.\n\n(Right click the tray icon to Quit.)");
+}
+
 void MainWindow::startServer() {
     if (m_worker && m_worker->isRunning()) return;
 
     QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(appData);
-    QString bleFilePath = QDir::toNativeSeparators(appData + "/uxplay_status.ble");
-
+    
     QStringList args = getArgumentsFromFile();
     
     int bleIdx = args.indexOf("-ble");
@@ -145,7 +154,16 @@ void MainWindow::startServer() {
             args.removeAt(bleIdx);
         }
     }
-    args << "-ble" << bleFilePath;
+
+    // Only add -ble and start beacon if checkbox is checked
+    if (!m_bleCheckbox) return;
+    if (m_bleCheckbox->isChecked()) {
+        QString bleFilePath = QDir::toNativeSeparators(appData + "/uxplay_status.ble");
+        args << "-ble" << bleFilePath;
+        startBeacon(bleFilePath);
+    } else {
+        stopBeacon();
+    }
 
     m_worker = new AirPlayWorker(this);
     m_worker->setArgs(args);
@@ -155,8 +173,6 @@ void MainWindow::startServer() {
     connect(m_worker, &AirPlayWorker::finished, m_worker, &QObject::deleteLater);
 
     m_worker->start();
-
-    startBeacon(bleFilePath);
 }
 
 void MainWindow::stopServer() {
@@ -164,14 +180,17 @@ void MainWindow::stopServer() {
     if (m_worker) {
         m_worker->disconnect();
         if (m_worker->isRunning()) {
-            m_worker->stopAirplay();
-            m_worker->wait(2000);
+            QMetaObject::invokeMethod(m_worker, &AirPlayWorker::stopAirplay, Qt::QueuedConnection);
+            if (!m_worker->wait(1000)) {
+                m_worker->terminate();
+            }
         }
         m_worker = nullptr;
     }
     m_running = false;
     updateStatus();
 }
+
 
 void MainWindow::onAirplayStarted() {
     m_running = true;
@@ -181,8 +200,10 @@ void MainWindow::onAirplayStarted() {
 void MainWindow::onAirplayStopped() {
     m_running = false;
     updateStatus();
+    
     if (!m_quitting) {
-        QTimer::singleShot(2000, this, &MainWindow::startServer);
+        qDebug() << "Session ended, restarting server to stay ready...";
+        QTimer::singleShot(1000, this, &MainWindow::startServer);
     }
 }
 
@@ -193,7 +214,8 @@ void MainWindow::onAirplayError(const QString &message) {
 void MainWindow::toggleAutostart() {
     bool enable = !isAutostartEnabled();
     setAutostart(enable);
-    m_autostartAction->setChecked(enable);
+    if (m_autostartAction)
+        m_autostartAction->setChecked(enable);
     updateStatus();
 }
 
@@ -237,13 +259,20 @@ void MainWindow::startBeacon(const QString &path) {
 
 void MainWindow::stopBeacon() {
     if (!m_beacon) return;
+    
+    qDebug() << "Stopping beacon process";
     if (m_beacon->state() != QProcess::NotRunning) {
         m_beacon->terminate();
-        if (!m_beacon->waitForFinished(2000))
+        if (!m_beacon->waitForFinished(500)) {
+            qDebug() << "Beacon didn't terminate, killing";
             m_beacon->kill();
+            m_beacon->waitForFinished(100);
+        }
     }
-    m_beacon->deleteLater();
+    
+    delete m_beacon;
     m_beacon = nullptr;
+    qDebug() << "Beacon stopped and cleaned up";
 }
 
 void MainWindow::showLicense() {
@@ -272,5 +301,4 @@ void MainWindow::updateStatus() {
     QString status = m_running ? "Server running" : "Server stopped";
     m_statusLabel->setText(status);
     m_autostartBtn->setText(isAutostartEnabled() ? "Disable Autostart" : "Enable Autostart");
-    if (m_statusAction) m_statusAction->setText("Status: " + status.toLower());
 }

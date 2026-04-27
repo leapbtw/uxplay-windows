@@ -24,6 +24,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     QApplication app(argc, argv);
+    app.setOrganizationName("leapbtw");
+    app.setApplicationName("uxplay-windows");
     
     QString appPath = QApplication::applicationDirPath();
     
@@ -34,7 +36,6 @@ int main(int argc, char *argv[]) {
     QString path = QDir::toNativeSeparators(appPath) + ";" + env.value("PATH");
     qputenv("PATH", path.toUtf8());
 
-    app.setApplicationName("uxplay-windows");
     app.setQuitOnLastWindowClosed(false);
 
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {

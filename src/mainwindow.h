@@ -5,6 +5,8 @@
 #include <QPushButton>
 #include <QSystemTrayIcon>
 #include <QProcess>
+#include <QCheckBox>
+#include <QMessageBox>
 
 class QMenu;
 class QAction;
@@ -29,6 +31,7 @@ private slots:
     void onAirplayStarted();
     void onAirplayStopped();
     void onAirplayError(const QString &message);
+    void toggleBle(bool checked); // bluetooth
 
 private:
     void startServer();
@@ -47,6 +50,8 @@ private:
     bool isAutostartEnabled() const;
     void setAutostart(bool enabled);
 
+    QCheckBox *m_bleCheckbox = nullptr;
+    
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_trayMenu = nullptr;
     QAction *m_autostartAction = nullptr;

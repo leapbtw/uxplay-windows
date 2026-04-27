@@ -109,3 +109,7 @@ windeployqt --no-translations --no-compiler-runtime --dir "$DIST_DIR" "$DIST_DIR
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="
+
+sleep 1
+powershell.exe -NoProfile -Command "taskkill /F /IM uxplay-windows.exe"
+echo ""
