@@ -17,56 +17,30 @@ jobs:
         run: |
           git clone -b rel/mDNSResponder-214 https://github.com/apple-oss-distributions/mDNSResponder.git --depth 1 mdns214
 
-      - name: HARD FIX headers (malloc/free crash fix)
-        shell: pwsh
+      - name: Patch broken build flags (IMPORTANT)
         run: |
-          $file1 = "mdns214\mDNSWindows\DLL\dllmain.c"
-          $file2 = "mdns214\mDNSShared\dnssd_clientstub.c"
+          # disable Apple's broken malloc/free confusion
+          (Get-Content mdns214\mDNSWindows\DLL\dnssd.vcxproj) `
+            -replace "<RuntimeLibrary>MultiThreaded</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>" |
+            Set-Content mdns214\mDNSWindows\DLL\dnssd.vcxproj
 
-          foreach ($f in @($file1, $file2)) {
-            $c = Get-Content $f
-
-            if ($c -notmatch "#include <stdlib.h>") {
-              $c = "#include <stdlib.h>`n" + $c
-            }
-            if ($c -notmatch "#include <stdio.h>") {
-              $c = "#include <stdio.h>`n" + $c
-            }
-
-            Set-Content $f $c
-          }
-
-      - name: Copy project file
-        run: |
-          copy dnssd.vcxproj mdns214\mDNSWindows\DLL\dnssd.vcxproj
-
-      - name: Build dnssd.dll (MSVC)
-        shell: pwsh
+      - name: Build dnssd.lib only (ignore install nonsense)
         run: |
           $msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
 
           & $msbuild mdns214\mDNSWindows\DLL\dnssd.vcxproj `
             /p:Configuration=Release `
             /p:Platform=x64 `
-            /p:AdditionalOptions="/D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_WARNINGS" `
+            /p:PlatformToolset=v143 `
+            /p:UseEnv=true `
             /m
 
-      - name: Verify build
-        shell: pwsh
-        run: |
-          if (!(Test-Path mdns214\mDNSWindows\DLL\x64\Release\dnssd.dll)) {
-            Write-Error "BUILD FAILED: dnssd.dll not found"
-            exit 1
-          }
-
-      - name: Collect artifacts
-        shell: pwsh
+      - name: Collect outputs
         run: |
           mkdir output
-
           copy mdns214\mDNSShared\dns_sd.h output\dns_sd.h
-          copy mdns214\mDNSWindows\DLL\x64\Release\dnssd.dll output\dnssd.dll
           copy mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib output\dnssd.lib
+          copy mdns214\mDNSWindows\DLL\x64\Release\dnssd.dll output\dnssd.dll
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
