@@ -26,6 +26,23 @@ jobs:
 
           Add-Content mdns214\mDNSWindows\DLL\dllmain.c "`n#include <stdlib.h>"
 
+      - name: Patch headers properly
+        shell: pwsh
+        run: |
+          $file = "mdns214\mDNSWindows\DLL\dllmain.c"
+
+          $content = Get-Content $file
+
+          if ($content -notmatch "#include <stdlib.h>") {
+            $content = "#include <stdlib.h>`n" + $content
+          }
+
+          if ($content -notmatch "#include <stdio.h>") {
+            $content = "#include <stdio.h>`n" + $content
+          }
+
+          Set-Content $file $content
+
       - name: Build dnssd.dll
         shell: pwsh
         run: |
