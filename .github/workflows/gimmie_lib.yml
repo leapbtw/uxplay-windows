@@ -1,0 +1,36 @@
+name: build mdns (on demand)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout (optional)
+        uses: actions/checkout@v4
+
+      - name: Download mDNSResponder source
+        run: |
+          git clone -b rel/mDNSResponder-214 https://github.com/apple-oss-distributions/mDNSResponder.git --depth 1 mdns214
+
+      - name: Build dnssd.lib
+        run: |
+          copy dnssd.vcxproj mdns214\mDNSWindows\DLL\dnssd.vcxproj
+          & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mdns214\mDNSWindows\DLL\dnssd.vcxproj /p:Configuration=Release /p:Platform=x64
+        continue-on-error: true
+
+      - name: Prepare artifacts
+        run: |
+          mkdir output
+          copy mdns214\mDNSShared\dns_sd.h output\dns_sd.h
+          copy mdns214\mDNSWindows\DLL\x64\Release\dnssd.lib output\dnssd.lib
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdns-windows
+          path: output
