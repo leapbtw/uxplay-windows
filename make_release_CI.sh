@@ -106,5 +106,4 @@ echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="
 
 sleep 1
-powershell.exe -NoProfile -Command "taskkill /F /IM uxplay-windows.exe"
 echo ""
