@@ -75,13 +75,19 @@ echo "UCRT64_PREFIX = $UCRT64_PREFIX"
 echo "DIST_DIR      = $DIST_DIR"
 
 echo "Copying all DLLs from UCRT64/bin..."
-find "$UCRT64_PREFIX/bin" -maxdepth 1 -type f -name '*.dll' \
-  -exec cp -n {} "$DIST_DIR/" \;
 
-echo "Copying all DLLs from UCRT64/lib..."
+EXCLUDE_REGEX='^(Qt6|Qt5|qtpcre2|QtSql|QtNetwork|QtCore|QtGui|QtWidgets|QtMultimedia|QtPositioning|QtWebEngine|QtSvg).+\.dll$'
+
+echo "Copying all DLLs from UCRT64/bin... (excluding Qt)"
+find "$UCRT64_PREFIX/bin" -maxdepth 1 -type f -name '*.dll' \
+  | grep -Ev "$EXCLUDE_REGEX" \
+  | xargs -I{} cp -n "{}" "$DIST_DIR/"
+
+echo "Copying all DLLs from UCRT64/lib... (excluding Qt)"
 find "$UCRT64_PREFIX/lib" -type f -name '*.dll' \
   ! -path "$UCRT64_PREFIX/lib/gstreamer-1.0/*" \
-  -exec cp -n {} "$DIST_DIR/" \;
+  | grep -Ev "$EXCLUDE_REGEX" \
+  | xargs -I{} cp -n "{}" "$DIST_DIR/"
 
 echo "Copying whole GStreamer plugin directory..."
 if [ -d "$GST_PLUGIN_DIR" ]; then
