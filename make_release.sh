@@ -7,6 +7,21 @@ DIST_DIR="$(pwd)/release"
 BUILD_DIR="$(pwd)/build"
 BEACON_DIR="$(pwd)/libuxplay/Bluetooth_LE_beacon"
 
+PROJECT_ROOT="$(pwd)"
+BONJOUR_SDK_HOME="$PROJECT_ROOT/Bonjour SDK"
+
+export BONJOUR_SDK_HOME
+export BONJOUR_SDK="$BONJOUR_SDK_HOME"
+
+if [ ! -f "$BONJOUR_SDK_HOME/Include/dns_sd.h" ]; then
+  echo "ERROR: dns_sd.h not found at: $BONJOUR_SDK_HOME/Include/dns_sd.h" >&2
+  exit 1
+fi
+if [ ! -f "$BONJOUR_SDK_HOME/Lib/x64/dnssd.lib" ]; then
+  echo "ERROR: dnssd.lib not found at: $BONJOUR_SDK_HOME/Lib/x64/dnssd.lib" >&2
+  exit 1
+fi
+
 echo "================================================="
 echo " 1. Compiling C++ App (CMake + Ninja)"
 echo "================================================="
