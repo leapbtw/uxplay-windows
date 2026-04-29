@@ -51,10 +51,32 @@ jobs:
           msystem: UCRT64
           update: true
 
+      - name: cache msys2 pacman packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\msys64\var\cache\pacman\pkg
+            C:\msys64\var\lib\pacman\sync
+          key: msys2-pacman-${{ runner.os }}-${{ hashFiles('ucrt_deps.txt') }}
+          restore-keys: |
+            msys2-pacman-${{ runner.os }}-
+
+      - name: cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/pip-cache
+          key: pip-${{ runner.os }}-${{ hashFiles('ucrt_deps.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
       - name: install build dependencies
         shell: msys2 {0}
         run: |
-          pacman -S --needed  --noconfirm - < ucrt_deps.txt
+          export PIP_CACHE_DIR="${PWD}/pip-cache"
+          mkdir -p "$PIP_CACHE_DIR"
+
+          pacman -S --needed --noconfirm - < ucrt_deps.txt
+
           pip install \
             winrt-Windows.Foundation \
             winrt-Windows.Foundation.Collections \
