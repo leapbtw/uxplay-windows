@@ -65,7 +65,7 @@ jobs:
       - name: make release!
         shell: msys2 {0}
         run: |
-          ./make_release.sh
+          ./make_release_CI.sh
 
       - name: uploading artifact
         uses: actions/upload-artifact@v4
