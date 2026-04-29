@@ -22,6 +22,9 @@ jobs:
     steps:
       - name: clone the repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
 
       - name: mDNSResponder git clone and compilation
         shell: powershell
@@ -58,7 +61,7 @@ jobs:
             winrt-Windows.Foundation.Collections \
             winrt-Windows.Devices.Bluetooth.Advertisement \
             winrt-Windows.Storage.Streams \
-            --break-system-packages
+            --only-binary=:all: --break-system-packages
 
       - name: make release!
         shell: msys2 {0}
