@@ -57,7 +57,6 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR/lib/gstreamer-1.0"
 [ -f "LICENSE.md" ] && cp "LICENSE.md" "$DIST_DIR/"
 
-# Copy executables
 cp "$BUILD_DIR/$EXE_NAME" "$DIST_DIR/"
 cp "$BEACON_DIR/dist/$BEACON_EXE" "$DIST_DIR/"
 
@@ -65,56 +64,36 @@ echo "================================================="
 echo " 4. Gathering BIG runtime bundle for CI"
 echo "================================================="
 
-# Prefix UCRT64 dentro MSYS2
 UCRT64_PREFIX="$(dirname "$(dirname "$(command -v gcc)")")"
 GST_PLUGIN_DIR="$UCRT64_PREFIX/lib/gstreamer-1.0"
-
-echo "UCRT64_PREFIX = $UCRT64_PREFIX"
-echo "DIST_DIR      = $DIST_DIR"
 
 COPIED_LIST_FILE="$DIST_DIR/copied-dll-paths.txt"
 rm -f "$COPIED_LIST_FILE"
 touch "$COPIED_LIST_FILE"
 
 copy_dll_flat() {
-  # Usage: copy_dll_flat "/path/to/src.dll"
   local src="$1"
   local dest="$DIST_DIR/$(basename "$src")"
 
-  # mimic cp -n behavior: don't overwrite existing
-  if [ -e "$dest" ]; then
-    return 0
-  fi
+  [ ! -f "$src" ] && return 0
+  [ -e "$dest" ] && return 0
 
   cp -n "$src" "$dest"
-  echo "COPIED: $src -> $dest"
-  echo "$src -> $dest" >> "$COPIED_LIST_FILE"
+  echo "$src -> $dest" >> "$COPIED_LIST_FILE" 2>/dev/null || true
 }
 
-EXCLUDE_REGEX='(^|/)(Qt[0-9]+|q[^/]*).+\.dll$'
+DLL_LIST_FILE="$PROJECT_ROOT/dll.txt"
 
-echo "Copying all DLLs from UCRT64/bin... (excluding Qt/q*)"
+if [ ! -f "$DLL_LIST_FILE" ]; then
+  echo "ERROR: dll.txt not found at: $DLL_LIST_FILE" >&2
+  exit 1
+fi
+
 while IFS= read -r dll_path; do
+  dll_path="$(echo "$dll_path" | xargs)"
   [ -z "$dll_path" ] && continue
   copy_dll_flat "$dll_path"
-done < <(
-  find "$UCRT64_PREFIX/bin" -maxdepth 1 -type f -name '*.dll' \
-    | grep -Ev "$EXCLUDE_REGEX" || true
-)
-
-echo "Copying all DLLs from UCRT64/lib... (excluding Qt/q*)"
-while IFS= read -r dll_path; do
-  [ -z "$dll_path" ] && continue
-  # keep original intent: exclude gstreamer-1.0 dlls under lib
-  if [[ "$dll_path" == "$UCRT64_PREFIX/lib/gstreamer-1.0/"* ]]; then
-    continue
-  fi
-  copy_dll_flat "$dll_path"
-done < <(
-  find "$UCRT64_PREFIX/lib" -type f -name '*.dll' \
-    ! -path "$UCRT64_PREFIX/lib/gstreamer-1.0/*" \
-    | grep -Ev "$EXCLUDE_REGEX" || true
-)
+done < "$DLL_LIST_FILE"
 
 echo "Copying whole GStreamer plugin directory..."
 if [ -d "$GST_PLUGIN_DIR" ]; then
@@ -131,22 +110,17 @@ echo "================================================="
 echo " 5. Finalizing Qt Dependencies (windeployqt)"
 echo "================================================="
 
-# 1) resolve exact windeployqt used in this CI environment
 WDEPLOYQT="$(command -v windeployqt.exe 2>/dev/null || command -v windeployqt 2>/dev/null)"
 if [ -z "$WDEPLOYQT" ]; then
   echo "ERROR: windeployqt not found in PATH" >&2
   exit 1
 fi
-echo "windeployqt = $WDEPLOYQT"
 
-# 2) remove any Qt dlls already present in dist (avoid mismatches)
 rm -f "$DIST_DIR"/Qt*.dll "$DIST_DIR"/qt*.dll 2>/dev/null || true
 
-# 3) run windeployqt from the resolved executable
 "$WDEPLOYQT" --no-translations --no-compiler-runtime \
   --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
 
-# 4) locate the deployed Qt6Core.dll and verify the missing symbol exists
 if [ -f "$DIST_DIR/qt6core.dll" ]; then
   QTCORE_DLL="$DIST_DIR/qt6core.dll"
 elif [ -f "$DIST_DIR/Qt6Core.dll" ]; then
@@ -156,22 +130,16 @@ else
   exit 1
 fi
 
-echo "Deployed Qt6Core: $QTCORE_DLL"
-
-# dumpbin (from VS) to check export
 DUMPBIN="C:\Program Files\Microsoft Visual Studio\2022\Enterprise\DIA SDK\bin\dumpbin.exe"
 if [ ! -f "$DUMPBIN" ]; then
   DUMPBIN="C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.3*\bin\Hostx64\x64\dumpbin.exe"
 fi
 
-# fallback: just do it if dumpbin exists, otherwise skip verification
 if (test -f "$DUMPBIN"); then
   "$DUMPBIN" /exports "$QTCORE_DLL" | findstr /C:"WideGetUniversalNameW" || true
-else
-  echo "NOTE: dumpbin not found; skipping export verification"
 fi
 
-rm release/mpr.dll # omfg
+rm release/mpr.dll
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
