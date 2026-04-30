@@ -31,12 +31,11 @@ cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
 ninja
 cd ..
 
-
 echo "================================================="
 echo " 2. Compiling Python BLE Beacon (PyInstaller)"
 echo "================================================="
 cd "$BEACON_DIR"
-# Make sure to replace 'uxplay-beacon-windows.py' with the actual filename if different
+
 pyinstaller \
   --onefile \
   --name ${BEACON_EXE%.*} \
@@ -47,9 +46,9 @@ pyinstaller \
   --hidden-import=psutil \
   --console \
   uxplay-beacon-windows.py \
-  --noconfirm # Overwrite existing build/dist folders without asking
-cd ../..
+  --noconfirm
 
+cd ../..
 
 echo "================================================="
 echo " 3. Preparing Clean Dist Folder"
@@ -62,7 +61,6 @@ mkdir -p "$DIST_DIR/lib/gstreamer-1.0"
 cp "$BUILD_DIR/$EXE_NAME" "$DIST_DIR/"
 cp "$BEACON_DIR/dist/$BEACON_EXE" "$DIST_DIR/"
 
-
 echo "================================================="
 echo " 4. Gathering BIG runtime bundle for CI"
 echo "================================================="
@@ -74,20 +72,49 @@ GST_PLUGIN_DIR="$UCRT64_PREFIX/lib/gstreamer-1.0"
 echo "UCRT64_PREFIX = $UCRT64_PREFIX"
 echo "DIST_DIR      = $DIST_DIR"
 
-echo "Copying all DLLs from UCRT64/bin..."
+COPIED_LIST_FILE="$DIST_DIR/copied-dll-paths.txt"
+rm -f "$COPIED_LIST_FILE"
+touch "$COPIED_LIST_FILE"
 
-EXCLUDE_REGEX='^(Qt6|Qt5|qtpcre2|QtSql|QtNetwork|QtCore|QtGui|QtWidgets|QtMultimedia|QtPositioning|QtWebEngine|QtSvg).+\.dll$'
+copy_dll_flat() {
+  # Usage: copy_dll_flat "/path/to/src.dll"
+  local src="$1"
+  local dest="$DIST_DIR/$(basename "$src")"
+
+  # mimic cp -n behavior: don't overwrite existing
+  if [ -e "$dest" ]; then
+    return 0
+  fi
+
+  cp -n "$src" "$dest"
+  echo "COPIED: $src -> $dest"
+  echo "$src -> $dest" >> "$COPIED_LIST_FILE"
+}
 
 echo "Copying all DLLs from UCRT64/bin... (excluding Qt)"
-find "$UCRT64_PREFIX/bin" -maxdepth 1 -type f -name '*.dll' \
-  | grep -Ev "$EXCLUDE_REGEX" \
-  | xargs -I{} cp -n "{}" "$DIST_DIR/"
+EXCLUDE_REGEX='^(Qt6|Qt5|qtpcre2|QtSql|QtNetwork|QtCore|QtGui|QtWidgets|QtMultimedia|QtPositioning|QtWebEngine|QtSvg).+\.dll$'
+
+while IFS= read -r dll_path; do
+  [ -z "$dll_path" ] && continue
+  copy_dll_flat "$dll_path"
+done < <(
+  find "$UCRT64_PREFIX/bin" -maxdepth 1 -type f -name '*.dll' \
+    | grep -Ev "$EXCLUDE_REGEX" || true
+)
 
 echo "Copying all DLLs from UCRT64/lib... (excluding Qt)"
-find "$UCRT64_PREFIX/lib" -type f -name '*.dll' \
-  ! -path "$UCRT64_PREFIX/lib/gstreamer-1.0/*" \
-  | grep -Ev "$EXCLUDE_REGEX" \
-  | xargs -I{} cp -n "{}" "$DIST_DIR/"
+while IFS= read -r dll_path; do
+  [ -z "$dll_path" ] && continue
+  # keep original intent: exclude gstreamer-1.0 dlls under lib
+  if [[ "$dll_path" == "$UCRT64_PREFIX/lib/gstreamer-1.0/"* ]]; then
+    continue
+  fi
+  copy_dll_flat "$dll_path"
+done < <(
+  find "$UCRT64_PREFIX/lib" -type f -name '*.dll' \
+    ! -path "$UCRT64_PREFIX/lib/gstreamer-1.0/*" \
+    | grep -Ev "$EXCLUDE_REGEX" || true
+)
 
 echo "Copying whole GStreamer plugin directory..."
 if [ -d "$GST_PLUGIN_DIR" ]; then
@@ -100,12 +127,15 @@ fi
 
 echo "Big runtime bundle copied."
 
-
 echo "================================================="
 echo " 5. Finalizing Qt Dependencies (windeployqt)"
 echo "================================================="
 windeployqt --no-translations --no-compiler-runtime --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
 
+echo "================================================="
+echo " Lista DLL copiate (src -> dest) salvata in:"
+echo " $COPIED_LIST_FILE"
+echo "================================================="
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
