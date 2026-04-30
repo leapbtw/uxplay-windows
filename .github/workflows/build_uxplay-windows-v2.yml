@@ -25,7 +25,19 @@ jobs:
         with:
           submodules: recursive
 
-      - name: mDNSResponder git clone and compilation
+      - name: cache mDNSResponder build
+        uses: actions/cache@v4
+        id: mdns-cache
+        with:
+          path: |
+            mdns2881
+            Bonjour SDK
+          key: mdns-${{ runner.os }}-${{ hashFiles('mdnsresponder-patches/2881.patch') }}-v1
+          restore-keys: |
+            mdns-${{ runner.os }}-
+
+      - name: mDNSResponder compilation
+        if: steps.mdns-cache.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           git clone --branch rel/mDNSResponder-2881 --depth 1 --single-branch `
@@ -45,44 +57,52 @@ jobs:
           cp mDNSWindows\DLL\x64\Release\dnssd.lib "..\Bonjour SDK\Lib\x64\dnssd.lib"
           cd ..
 
-      - name: download+install msys2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          update: true
-
-      - name: cache msys2 pacman packages
+      # Cache MSYS2 migliorata
+      - name: cache msys2 environment
         uses: actions/cache@v4
         with:
           path: |
             C:\msys64\var\cache\pacman\pkg
             C:\msys64\var\lib\pacman\sync
-          key: msys2-pacman-${{ runner.os }}-${{ hashFiles('ucrt_deps.txt') }}
+            C:\msys64\ucrt64
+          key: msys2-env-${{ runner.os }}-${{ hashFiles('ucrt_deps.txt') }}-v3
           restore-keys: |
-            msys2-pacman-${{ runner.os }}-
+            msys2-env-${{ runner.os }}-
 
-      - name: cache pip downloads
+      - name: download+install msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: false  # Do not reinstall if in cache
+
+      - name: cache pip and python packages
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/pip-cache
-          key: pip-${{ runner.os }}-${{ hashFiles('ucrt_deps.txt') }}
+          path: |
+            ${{ github.workspace }}/pip-cache
+            C:\msys64\ucrt64\lib\python*\site-packages\winrt*
+          key: pip-winrt-${{ runner.os }}-v2
           restore-keys: |
-            pip-${{ runner.os }}-
+            pip-winrt-${{ runner.os }}-
 
       - name: install build dependencies
         shell: msys2 {0}
         run: |
-          export PIP_CACHE_DIR="${PWD}/pip-cache"
-          mkdir -p "$PIP_CACHE_DIR"
-
+          # Installa pacchetti solo se necessario
           pacman -S --needed --noconfirm - < ucrt_deps.txt
 
-          pip install \
-            winrt-Windows.Foundation \
-            winrt-Windows.Foundation.Collections \
-            winrt-Windows.Devices.Bluetooth.Advertisement \
-            winrt-Windows.Storage.Streams \
-            --break-system-packages
+          if ! python -c "import winrt.windows.foundation" 2>/dev/null; then
+            export PIP_CACHE_DIR="${PWD}/pip-cache"
+            mkdir -p "$PIP_CACHE_DIR"
+            
+            pip install \
+              winrt-Windows.Foundation \
+              winrt-Windows.Foundation.Collections \
+              winrt-Windows.Devices.Bluetooth.Advertisement \
+              winrt-Windows.Storage.Streams \
+              --break-system-packages
+          fi
 
       - name: make release!
         shell: msys2 {0}
