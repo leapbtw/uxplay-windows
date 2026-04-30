@@ -82,7 +82,7 @@ copy_dll_flat() {
   echo "$src -> $dest" >> "$COPIED_LIST_FILE" 2>/dev/null || true
 }
 
-DLL_LIST_FILE="$PROJECT_ROOT/dll.txt"
+DLL_LIST_FILE="$PROJECT_ROOT/stuff/dll.txt"
 
 if [ ! -f "$DLL_LIST_FILE" ]; then
   echo "ERROR: dll.txt not found at: $DLL_LIST_FILE" >&2
