@@ -171,6 +171,8 @@ else
   echo "NOTE: dumpbin not found; skipping export verification"
 fi
 
+rm release/mpr.dll # omfg
+
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="
