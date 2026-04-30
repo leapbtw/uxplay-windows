@@ -139,7 +139,7 @@ if (test -f "$DUMPBIN"); then
   "$DUMPBIN" /exports "$QTCORE_DLL" | findstr /C:"WideGetUniversalNameW" || true
 fi
 
-rm release/mpr.dll
+#rm release/mpr.dll
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
