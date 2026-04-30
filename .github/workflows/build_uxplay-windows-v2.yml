@@ -118,6 +118,8 @@ jobs:
       - name: make release!
         shell: msys2 {0}
         run: |
+          where windeployqt
+          windeployqt --version
           ./make_release_CI.sh
 
       - name: uploading artifact

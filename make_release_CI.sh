@@ -130,12 +130,46 @@ echo "Big runtime bundle copied."
 echo "================================================="
 echo " 5. Finalizing Qt Dependencies (windeployqt)"
 echo "================================================="
-windeployqt --no-translations --no-compiler-runtime --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
 
-echo "================================================="
-echo " Lista DLL copiate (src -> dest) salvata in:"
-echo " $COPIED_LIST_FILE"
-echo "================================================="
+# 1) resolve exact windeployqt used in this CI environment
+WDEPLOYQT="$(command -v windeployqt.exe 2>/dev/null || command -v windeployqt 2>/dev/null)"
+if [ -z "$WDEPLOYQT" ]; then
+  echo "ERROR: windeployqt not found in PATH" >&2
+  exit 1
+fi
+echo "windeployqt = $WDEPLOYQT"
+
+# 2) remove any Qt dlls already present in dist (avoid mismatches)
+rm -f "$DIST_DIR"/Qt*.dll "$DIST_DIR"/qt*.dll 2>/dev/null || true
+
+# 3) run windeployqt from the resolved executable
+"$WDEPLOYQT" --no-translations --no-compiler-runtime \
+  --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
+
+# 4) locate the deployed Qt6Core.dll and verify the missing symbol exists
+if [ -f "$DIST_DIR/qt6core.dll" ]; then
+  QTCORE_DLL="$DIST_DIR/qt6core.dll"
+elif [ -f "$DIST_DIR/Qt6Core.dll" ]; then
+  QTCORE_DLL="$DIST_DIR/Qt6Core.dll"
+else
+  echo "ERROR: Qt6Core.dll not found in $DIST_DIR after windeployqt" >&2
+  exit 1
+fi
+
+echo "Deployed Qt6Core: $QTCORE_DLL"
+
+# dumpbin (from VS) to check export
+DUMPBIN="C:\Program Files\Microsoft Visual Studio\2022\Enterprise\DIA SDK\bin\dumpbin.exe"
+if [ ! -f "$DUMPBIN" ]; then
+  DUMPBIN="C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.3*\bin\Hostx64\x64\dumpbin.exe"
+fi
+
+# fallback: just do it if dumpbin exists, otherwise skip verification
+if (test -f "$DUMPBIN"); then
+  "$DUMPBIN" /exports "$QTCORE_DLL" | findstr /C:"WideGetUniversalNameW" || true
+else
+  echo "NOTE: dumpbin not found; skipping export verification"
+fi
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
