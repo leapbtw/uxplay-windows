@@ -20,6 +20,10 @@ jobs:
       contents: write
 
     steps:
+      - name: verify OS version
+        shell: powershell
+        run: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+
       - name: clone the repo
         uses: actions/checkout@v5
         with:
