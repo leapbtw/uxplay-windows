@@ -91,9 +91,9 @@ copy_dll_flat() {
   echo "$src -> $dest" >> "$COPIED_LIST_FILE"
 }
 
-echo "Copying all DLLs from UCRT64/bin... (excluding Qt)"
-EXCLUDE_REGEX='^(Qt6|Qt5|qtpcre2|QtSql|QtNetwork|QtCore|QtGui|QtWidgets|QtMultimedia|QtPositioning|QtWebEngine|QtSvg).+\.dll$'
+EXCLUDE_REGEX='(^|/)(Qt[0-9]+|q[^/]*).+\.dll$'
 
+echo "Copying all DLLs from UCRT64/bin... (excluding Qt/q*)"
 while IFS= read -r dll_path; do
   [ -z "$dll_path" ] && continue
   copy_dll_flat "$dll_path"
@@ -102,7 +102,7 @@ done < <(
     | grep -Ev "$EXCLUDE_REGEX" || true
 )
 
-echo "Copying all DLLs from UCRT64/lib... (excluding Qt)"
+echo "Copying all DLLs from UCRT64/lib... (excluding Qt/q*)"
 while IFS= read -r dll_path; do
   [ -z "$dll_path" ] && continue
   # keep original intent: exclude gstreamer-1.0 dlls under lib
