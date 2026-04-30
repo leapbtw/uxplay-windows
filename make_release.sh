@@ -31,12 +31,11 @@ cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
 ninja
 cd ..
 
-
 echo "================================================="
 echo " 2. Compiling Python BLE Beacon (PyInstaller)"
 echo "================================================="
 cd "$BEACON_DIR"
-# Make sure to replace 'uxplay-beacon-windows.py' with the actual filename if different
+
 pyinstaller \
   --onefile \
   --name ${BEACON_EXE%.*} \
@@ -47,9 +46,9 @@ pyinstaller \
   --hidden-import=psutil \
   --console \
   uxplay-beacon-windows.py \
-  --noconfirm # Overwrite existing build/dist folders without asking
-cd ../..
+  --noconfirm
 
+cd ../..
 
 echo "================================================="
 echo " 3. Preparing Clean Dist Folder"
@@ -61,7 +60,6 @@ mkdir -p "$DIST_DIR/lib/gstreamer-1.0"
 # Copy executables
 cp "$BUILD_DIR/$EXE_NAME" "$DIST_DIR/"
 cp "$BEACON_DIR/dist/$BEACON_EXE" "$DIST_DIR/"
-
 
 echo "================================================="
 echo " 4. Gathering MSYS2 & GStreamer Runtime DLLs"
@@ -81,8 +79,8 @@ APP_PID=$!
 read -p "Press [ENTER] here once the stream is playing on screen..."
 
 if ! tasklist | grep -iq "$EXE_NAME"; then
-    echo "ERROR: $EXE_NAME crashed or is not running!"
-    exit 1
+  echo "ERROR: $EXE_NAME crashed or is not running!"
+  exit 1
 fi
 
 echo "Capturing Loaded Modules..."
@@ -93,38 +91,52 @@ DLL_LIST=$(powershell.exe -NoProfile -Command "
     Select-Object -ExpandProperty FileName
 ")
 
-echo "Copying dependencies..."
+echo "Copying DLL dependencies (src -> dest)..."
 while read -r win_path; do
-    [ -z "$win_path" ] && continue
+  [ -z "$win_path" ] && continue
 
-    # change windows path into unix path
-    unix_path=$(cygpath -u "$win_path")
+  # change windows path into unix path
+  unix_path=$(cygpath -u "$win_path")
 
-    if [[ "$unix_path" == *"/lib/gstreamer-1.0/"* ]]; then
-        cp -n "$unix_path" "$DIST_DIR/lib/gstreamer-1.0/"
-    else
-        # do not overwrite exe
-        if [[ "$unix_path" != *"$EXE_NAME" && "$unix_path" != *"$BEACON_EXE" ]]; then
-            cp -n "$unix_path" "$DIST_DIR/"
-        fi
-    fi
+  case "$unix_path" in
+    *.dll|*.DLL) ;;
+    *)
+      continue
+      ;;
+  esac
+
+  if [[ "$unix_path" == *"/lib/gstreamer-1.0/"* ]]; then
+    dest_dir="$DIST_DIR/lib/gstreamer-1.0"
+    dest="$dest_dir/$(basename "$unix_path")"
+    mkdir -p "$dest_dir"
+  else
+    dest="$DIST_DIR/$(basename "$unix_path")"
+  fi
+
+  # do not overwrite if already copied
+  if [ -f "$dest" ]; then
+    continue
+  fi
+
+  cp "$unix_path" "$dest"
+  echo "COPIED: $unix_path -> $dest"
 done <<< "$DLL_LIST"
+
 
 echo "Closing app..."
 # Cleanly kill the Qt App process
 taskkill //PID $APP_PID //T //F > /dev/null 2>&1 || true
-
 
 echo "================================================="
 echo " 5. Finalizing Qt Dependencies (windeployqt)"
 echo "================================================="
 windeployqt --no-translations --no-compiler-runtime --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
 
-
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="
 
+touch release/.keep
 sleep 1
 powershell.exe -NoProfile -Command "taskkill /F /IM uxplay-windows.exe"
 echo ""

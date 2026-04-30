@@ -86,7 +86,6 @@ jobs:
         with:
           msystem: UCRT64
           update: false
-          install: false
 
       - name: cache pip and python packages
         uses: actions/cache@v5
