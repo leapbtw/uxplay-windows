@@ -1,0 +1,15 @@
+mDNSResponder 1.0d1
+
+    <no args>    Runs the service normally
+    -install     Creates the service and starts it
+    -remove      Stops the service and deletes it
+    -start       Starts the service dispatcher after processing all other arguments
+    -server      Runs the service directly as a server (for debugging)
+    -q           Toggles Quiet Mode (no events or output)
+    -remote      Allow remote connections
+    -cache n     Number of mDNS cache entries (defaults to 512)
+    -h[elp]      Display Help/Usage
+
+
+you must open powershell as Administrator to see mDNSResponder.exe output
+-install and -remove trigger UAC to install or remove the Service

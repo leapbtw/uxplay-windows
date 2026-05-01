@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "airplayworker.h"
+#include "mdns_responder.hpp"
+#include <windows.h>
+#include <winsvc.h>
 
 #include <QProcess>
 #include <QAction>
@@ -26,7 +29,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     ensureSettingsFileExists();
     setupTray();
     setupUI();
-    startServer();
+
+    // If Bonjour Service is missing, we must install it; otherwise we exit.
+    if (ensureBonjourServiceInstalled()) {
+        startServer();
+    } else {
+        m_quitting = true;
+        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        return;
+    }
 }
 
 MainWindow::~MainWindow() {
@@ -109,7 +120,13 @@ void MainWindow::openSettingsFile() {
 
 void MainWindow::setupTray() {
     m_tray = new QSystemTrayIcon(this);
-    m_tray->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
+    QIcon trayIcon;
+    QString icoPath = QApplication::applicationDirPath() + "/resources/icon.ico";
+    trayIcon = QIcon(icoPath);
+    if (trayIcon.isNull()) {
+        trayIcon = QApplication::style()->standardIcon(QStyle::SP_MediaPlay);
+    }
+    m_tray->setIcon(trayIcon);
     m_tray->setToolTip("uxplay-windows");
 
     m_trayMenu = new QMenu(this);
@@ -301,4 +318,87 @@ void MainWindow::updateStatus() {
     QString status = m_running ? "Server running" : "Server stopped";
     m_statusLabel->setText(status);
     m_autostartBtn->setText(isAutostartEnabled() ? "Disable Autostart" : "Enable Autostart");
+}
+
+bool MainWindow::isWindowsServicePresent(const std::wstring& serviceName) const {
+    SC_HANDLE hSCM = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CONNECT);
+    if (!hSCM) return false;
+
+    SC_HANDLE hSvc = OpenServiceW(hSCM, serviceName.c_str(), SERVICE_QUERY_STATUS);
+    if (!hSvc) {
+        DWORD err = GetLastError();
+        CloseServiceHandle(hSCM);
+        return err != ERROR_SERVICE_DOES_NOT_EXIST;
+    }
+
+    CloseServiceHandle(hSvc);
+    CloseServiceHandle(hSCM);
+    return true;
+}
+
+bool MainWindow::ensureBonjourServiceInstalled() {
+    const std::wstring serviceName = L"Bonjour Service";
+
+    if (isWindowsServicePresent(serviceName)) {
+        return true;
+    }
+
+    int choice = QMessageBox::question(
+        this,
+        "Bonjour Service Required",
+        "Bonjour Service is required for discovery (mDNS). It is not "
+        "installed.\n\nDo you want to install it now?",
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::Yes
+    );
+
+    if (choice != QMessageBox::Yes) {
+        QMessageBox::critical(
+            this,
+            "Bonjour Service Missing",
+            "Bonjour Service is required. The application will now exit."
+        );
+        return false;
+    }
+
+    QMessageBox::information(
+        this,
+        "Installing Bonjour Service",
+        "Starting installation of 'Bonjour Service'. Follow any UAC prompt."
+    );
+
+    int rc = mdns::MdnsResponder::install();
+
+    // Re-check after install to be safe.
+    if (rc == 0 && isWindowsServicePresent(serviceName)) {
+        QMessageBox::information(
+            this,
+            "Installation Complete",
+            "Bonjour Service installed successfully.\nThe application will restart."
+        );
+        restartApplication();
+        return false; // do not start server in this instance
+    }
+
+    QMessageBox::critical(
+        this,
+        "Installation Failed",
+        "Failed to install 'Bonjour Service'.\n\n"
+        "The application will now exit."
+    );
+    return false;
+}
+
+void MainWindow::restartApplication() {
+    m_quitting = true;
+    stopServer();
+
+    QString exePath = QApplication::applicationFilePath();
+    QStringList args = QCoreApplication::arguments();
+    if (!args.isEmpty()) args.removeFirst(); // remove exe path
+
+    QProcess::startDetached(exePath, args);
+
+    // close GUI of current process after a short delay
+    QTimer::singleShot(200, qApp, &QCoreApplication::quit);
 }

@@ -135,6 +135,10 @@ echo " 5. Finalizing Qt Dependencies (windeployqt)"
 echo "================================================="
 windeployqt --no-translations --no-compiler-runtime --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
 
+echo "Copying icon"
+mkdir $DIST_DIR/resources
+cp $PROJECT_ROOT/stuff/newicon.ico $DIST_DIR/resources/icon.ico
+
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="

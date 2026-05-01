@@ -128,6 +128,12 @@ cp ./build/compile_commands.json release/.
 
 
 echo "================================================="
+echo " 6. Copying icon"
+echo "================================================="
+find $PROJECT_ROOT -name *.ico
+cp stuff/newicon.ico resources/icon.ico
+
+echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="
 

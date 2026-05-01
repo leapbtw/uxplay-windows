@@ -15,6 +15,8 @@ add_executable(uxplay-windows WIN32
     src/main.cpp
     src/mainwindow.cpp
     src/airplayworker.cpp
+    src/mdns_responder.cpp
+    src/resources.rc
 )
 
 target_link_libraries(uxplay-windows PRIVATE

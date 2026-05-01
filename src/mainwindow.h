@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <QLabel>
 #include <QMainWindow>
 #include <QPushButton>
@@ -41,17 +43,20 @@ private:
     void updateStatus();
     void startBeacon(const QString &path);
     void stopBeacon();
-    
+
     QProcess *m_beacon = nullptr;
 
     QStringList getArgumentsFromFile();
     void ensureSettingsFileExists();
-    
+    bool ensureBonjourServiceInstalled();
+    bool isWindowsServicePresent(const std::wstring &serviceName) const;
+    void restartApplication();
+
     bool isAutostartEnabled() const;
     void setAutostart(bool enabled);
 
     QCheckBox *m_bleCheckbox = nullptr;
-    
+
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_trayMenu = nullptr;
     QAction *m_autostartAction = nullptr;
