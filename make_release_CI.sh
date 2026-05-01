@@ -44,7 +44,7 @@ pyinstaller \
   --hidden-import=winrt.windows.devices.bluetooth.advertisement \
   --hidden-import=winrt.windows.storage.streams \
   --hidden-import=psutil \
-  --noconsole \
+  --windowed \
   uxplay-beacon-windows.py \
   --noconfirm
 
