@@ -63,10 +63,10 @@ jobs:
           New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Lib\x64' | Out-Null
           New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Bin\x64' | Out-Null
 
-          cp mDNSWindows\DLL\x64\Release\dnssd.dll "..\Bonjour SDK\Bin\x64\dnssd.dll"
-          cp mDNSWindows\SystemService\x64\Release\mDNSResponder.exe "..\Bonjour SDK\Bin\x64\mDNSResponder.exe"
-          cp mDNSShared\dns_sd.h '..\Bonjour SDK\Include\dns_sd.h'
-          cp mDNSWindows\DLL\x64\Release\dnssd.lib '..\Bonjour SDK\Lib\x64\dnssd.lib'
+          cp mDNSWindows\DLL\x64\Release\dnssd.dll                    "..\Bonjour SDK\Bin\x64\dnssd.dll"
+          cp mDNSWindows\SystemService\x64\Release\mDNSResponder.exe  "..\Bonjour SDK\Bin\x64\mDNSResponder.exe"
+          cp mDNSShared\dns_sd.h                                      "..\Bonjour SDK\Include\dns_sd.h"
+          cp mDNSWindows\DLL\x64\Release\dnssd.lib                    "..\Bonjour SDK\Lib\x64\dnssd.lib"
 
           cd ..
           Remove-Item -Recurse -Force mdns2881

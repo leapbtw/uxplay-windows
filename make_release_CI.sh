@@ -115,6 +115,14 @@ echo "================================================="
 windeployqt --no-translations --no-compiler-runtime \
   --dir "$DIST_DIR" "$DIST_DIR/$EXE_NAME"
 
+
+echo "================================================="
+echo " 6. Copying mDNSResponder.exe and dnssd.dll"
+echo "================================================="
+cp "./Bonjour SDK/Bin/x64/dnssd.dll" release/.
+cp "./Bonjour SDK/Bin/x64/mDNSResponder.exe" release/.
+
+
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
 echo "================================================="
