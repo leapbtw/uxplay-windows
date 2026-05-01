@@ -124,7 +124,7 @@ cp "./Bonjour SDK/Bin/x64/dnssd.dll" release/.
 cp "./Bonjour SDK/Bin/x64/mDNSResponder.exe" release/.
 
 find $PROJECT_ROOT -name compile_commands.json
-cp ./compile_commands.json release/.
+cp ./build/compile_commands.json release/.
 
 
 echo "================================================="
