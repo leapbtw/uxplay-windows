@@ -3,7 +3,7 @@ name: build uxplay-windows
 on:
   push:
     branches:
-      - mainDISABLED
+      - main
   workflow_dispatch:
     inputs:
       tmate_debug_enabled:

@@ -61,38 +61,50 @@ cp "$BUILD_DIR/$EXE_NAME" "$DIST_DIR/"
 cp "$BEACON_DIR/dist/$BEACON_EXE" "$DIST_DIR/"
 
 echo "================================================="
-echo " 4. Gathering BIG runtime bundle for CI"
+echo " 4. Gathering BIG runtime bundle for CI (only from stuff/dll.txt)"
 echo "================================================="
 
-UCRT64_PREFIX="$(dirname "$(dirname "$(command -v gcc)")")"
-
 DLL_LIST_FILE="$PROJECT_ROOT/stuff/dll.txt"
+if [ ! -f "$DLL_LIST_FILE" ]; then
+  echo "ERROR: dll.txt not found at: $DLL_LIST_FILE" >&2
+  exit 1
+fi
 
-copy_dll_preserve_path() {
-  local src="$1"
+copy_one_dll() {
+  local win_path="$1"
+  [ -z "$win_path" ] && return 0
 
-  [ ! -f "$src" ] && return 0
-
-  local relpath="$src"
-  if [[ "$src" == "$UCRT64_PREFIX"* ]]; then
-    relpath="${src#"$UCRT64_PREFIX"/}"
-  else
-    relpath="$(echo "$src" | sed 's#^/##')" # fallback
+  local unix_path="$win_path"
+  if [[ "$win_path" =~ ^[A-Za-z]:\\ ]]; then
+    unix_path="$(cygpath -u "$win_path")"
   fi
 
-  local dest="$DIST_DIR/$relpath"
-  local dest_dir
-  dest_dir="$(dirname "$dest")"
+  case "$unix_path" in
+    *.dll|*.DLL) ;;
+    *) return 0 ;;
+  esac
 
-  mkdir -p "$dest_dir"
+  [ -f "$unix_path" ] || return 0
 
-  cp -n "$src" "$dest" 2>/dev/null || true
+  local dest=""
+  if [[ "$unix_path" == *"/lib/gstreamer-1.0/"* ]]; then
+    dest="$DIST_DIR/lib/gstreamer-1.0/$(basename "$unix_path")"
+    mkdir -p "$DIST_DIR/lib/gstreamer-1.0"
+  else
+    dest="$DIST_DIR/$(basename "$unix_path")"
+  fi
+
+  if [ -f "$dest" ]; then
+    return 0
+  fi
+
+  cp "$unix_path" "$dest"
 }
 
 while IFS= read -r dll_path; do
   dll_path="$(echo "$dll_path" | xargs)" # trim
   [ -z "$dll_path" ] && continue
-  copy_dll_preserve_path "$dll_path"
+  copy_one_dll "$dll_path"
 done < "$DLL_LIST_FILE"
 
 echo "Big runtime bundle copied (restricted to dll.txt)."
