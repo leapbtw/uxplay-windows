@@ -27,7 +27,8 @@ echo " 1. Compiling C++ App (CMake + Ninja)"
 echo "================================================="
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
-cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+cmake -DCMAKE_BUILD_TYPE=Release -G Ninja \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $PROJECT_ROOT
 ninja
 cd ..
 
@@ -121,6 +122,8 @@ echo " 6. Copying mDNSResponder.exe and dnssd.dll"
 echo "================================================="
 cp "./Bonjour SDK/Bin/x64/dnssd.dll" release/.
 cp "./Bonjour SDK/Bin/x64/mDNSResponder.exe" release/.
+
+cp ./compile_commands.json release/.
 
 
 echo "================================================="

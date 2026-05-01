@@ -27,7 +27,10 @@ echo " 1. Compiling C++ App (CMake + Ninja)"
 echo "================================================="
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
-cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+CPU_BASELINE_FLAGS="-march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-avx512f -mno-fma"
+cmake -DCMAKE_BUILD_TYPE=Release -G Ninja .. \
+  -DCMAKE_C_FLAGS_RELEASE="$CPU_BASELINE_FLAGS" \
+  -DCMAKE_CXX_FLAGS_RELEASE="$CPU_BASELINE_FLAGS"
 ninja
 cd ..
 
