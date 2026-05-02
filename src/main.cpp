@@ -4,6 +4,7 @@
 #include <QSystemTrayIcon>
 #include <QDir>
 #include <QProcessEnvironment>
+#include <QIcon>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -26,6 +27,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setOrganizationName("leapbtw");
     app.setApplicationName("uxplay-windows");
+    app.setWindowIcon(QIcon(QApplication::applicationDirPath() + "/resources/icon.ico"));
     
     QString appPath = QApplication::applicationDirPath();
     

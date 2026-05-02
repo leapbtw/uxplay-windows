@@ -76,6 +76,7 @@ QStringList MainWindow::getArgumentsFromFile() {
 
 void MainWindow::setupUI() {
     setWindowTitle("uxplay-windows");
+    setWindowIcon(QApplication::windowIcon());
     setFixedSize(300, 220);
 
     auto *central = new QWidget(this);
