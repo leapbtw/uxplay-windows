@@ -5,6 +5,8 @@
 > (20 apr 2026) \
 > I've now merged the cpp rewrite into main. Automatic builds when forking are most likely broken. \
 > I'll work on finish the rewrite and then i'll worry about it.
+> (3 may 2026) \
+> I'm almost done with the new version
 
 # FREE AirPlay to your Windows PC
 Free as both in "freedom" and "free beer"!
@@ -18,9 +20,9 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 > [!NOTE]
 > *What is uxplay-windows?*
 > 
-> [UxPlay](https://github.com/FDH2/UxPlay/) allows you to screen share from your Apple devices to non-Apple ones using AirPlay.
-> 
-> [uxplay-windows](.) (this project) wraps binaries of UxPlay into a fully featured App for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging. Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
+> [uxplay-windows](.) is a software that allows you to video stream with AirPlay to your windows PC. \
+> It turns [UxPlay](https://github.com/FDH2/UxPlay/) into a fully featured App for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging.
+> Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
 
 
 > [!TIP]
@@ -46,8 +48,10 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 <br>
 
 ## TODO
-- make colored icon to show if uxplay is running or not
 - make an update checker
+- rename stream window
+- autostart
+- 
 
 ## Known Issues
 - uxplay bugs out when waking PC from Sleep
