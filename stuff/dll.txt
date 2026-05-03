@@ -34,6 +34,9 @@
 /ucrt64/bin/libbrotlicommon.dll
 /ucrt64/share/qt6/plugins/platforms/qwindows.dll
 /ucrt64/share/qt6/plugins/styles/qmodernwindowsstyle.dll
+/ucrt64/share/qt6/plugins/imageformats/qgif.dll
+/ucrt64/share/qt6/plugins/imageformats/qico.dll
+/ucrt64/share/qt6/plugins/imageformats/qjpeg.dll
 /ucrt64/lib/gstreamer-1.0/libgstapp.dll
 /ucrt64/lib/gstreamer-1.0/libgstcoreelements.dll
 /ucrt64/lib/gstreamer-1.0/libgstlibav.dll
@@ -138,6 +141,7 @@
 /ucrt64/lib/gstreamer-1.0/libgstplayback.dll
 /ucrt64/lib/gstreamer-1.0/libgstvideoconvertscale.dll
 /ucrt64/lib/gstreamer-1.0/libgstd3d12.dll
+/ucrt64/lib/gstreamer-1.0/libgstd3d11.dll
 /ucrt64/bin/libgstcodecs-1.0-0.dll
 /ucrt64/bin/libgstd3d11-1.0-0.dll
 /ucrt64/bin/libgstd3d12-1.0-0.dll

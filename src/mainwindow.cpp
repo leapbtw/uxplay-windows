@@ -19,6 +19,7 @@
 #include <QStandardPaths>
 #include <QStyle>
 #include <QSystemTrayIcon>
+#include <QComboBox>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -94,6 +95,34 @@ void MainWindow::setupUI() {
     connect(m_bleCheckbox, &QCheckBox::toggled, this, &MainWindow::toggleBle);
     layout->addWidget(m_bleCheckbox);
 
+    // Force Fullscreen Checkbox
+    m_fullscreenCheckbox = new QCheckBox("Force Fullscreen", this);
+    m_fullscreenCheckbox->setChecked(
+        settings.value("force_fs_enabled", false).toBool()
+    );
+    connect(m_fullscreenCheckbox, &QCheckBox::toggled, this,
+            &MainWindow::toggleForceFullscreen);
+    layout->addWidget(m_fullscreenCheckbox);
+
+    // Renderer dropdown
+    m_rendererCombo = new QComboBox(this);
+    m_rendererCombo->addItem("Video Renderer (Auto)", "auto");
+    m_rendererCombo->addItem("D3D11", "d3d11");
+    m_rendererCombo->addItem("D3D12", "d3d12");
+
+    {
+        QString saved = settings.value("renderer_mode", "auto").toString();
+        int idx = m_rendererCombo->findData(saved);
+        if (idx >= 0) m_rendererCombo->setCurrentIndex(idx);
+    }
+
+    connect(m_rendererCombo,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onRendererChanged);
+
+    layout->addWidget(m_rendererCombo);
+
+
     m_settingsBtn = new QPushButton("Edit Server Settings", this);
     connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettingsFile);
     layout->addWidget(m_settingsBtn);
@@ -157,6 +186,71 @@ void MainWindow::toggleBle(bool checked) {
     QMessageBox::information(this, "uxplay-windows", "Please restart the uxplay-windows to apply changes.\n\n(Right click the tray icon to Quit.)");
 }
 
+void MainWindow::toggleForceFullscreen(bool checked) {
+    QSettings settings;
+    if (settings.value("force_fs_enabled").toBool() == checked) {
+        return;
+    }
+
+    settings.setValue("force_fs_enabled", checked);
+    QMessageBox::information(
+        this, "uxplay-windows",
+        "Please restart the uxplay-windows to apply changes.\n\n"
+        "(Right click the tray icon to Quit.)"
+    );
+}
+
+void MainWindow::onRendererChanged(int /*index*/) {
+    if (!m_rendererCombo) return;
+
+    QString mode = m_rendererCombo->currentData().toString();
+
+    QSettings settings;
+    QString saved = settings.value("renderer_mode", "auto").toString();
+    if (saved == mode) return;
+
+    settings.setValue("renderer_mode", mode);
+    QMessageBox::information(
+        this, "uxplay-windows",
+        "Please restart the uxplay-windows to apply changes.\n\n"
+        "(Right click the tray icon to Quit.)"
+    );
+}
+
+void MainWindow::applyRendererAndFullscreenArgs(QStringList &args) {
+    while (true) {
+        int idx = args.indexOf("-fs");
+        if (idx < 0) break;
+        args.removeAt(idx);
+    }
+    if (m_fullscreenCheckbox && m_fullscreenCheckbox->isChecked()) {
+        args << "-fs";
+    }
+
+    // Remove existing "-vs <sink>" pairs
+    for (int i = 0; i < args.size();) {
+        if (args[i] == "-vs") {
+            args.removeAt(i); // -vs
+            if (i < args.size()) {
+                args.removeAt(i); // sink
+            }
+            continue;
+        }
+        ++i;
+    }
+
+    QString mode = "auto";
+    if (m_rendererCombo) {
+        mode = m_rendererCombo->currentData().toString();
+    }
+
+    if (mode == "d3d11") {
+        args << "-vs" << "d3d11videosink";
+    } else if (mode == "d3d12") {
+        args << "-vs" << "d3d12videosink";
+    }
+}
+
 void MainWindow::startServer() {
     if (m_worker && m_worker->isRunning()) return;
 
@@ -172,6 +266,9 @@ void MainWindow::startServer() {
             args.removeAt(bleIdx);
         }
     }
+
+    // Applica le nuove opzioni (-fs e renderer)
+    applyRendererAndFullscreenArgs(args);
 
     // Only add -ble and start beacon if checkbox is checked
     if (!m_bleCheckbox) return;
@@ -256,9 +353,9 @@ void MainWindow::startBeacon(const QString &path) {
     if (m_beacon && m_beacon->state() != QProcess::NotRunning)
         return;
 
-    QString exe = QApplication::applicationDirPath() + "/uxplay-beacon.exe";
+    QString exe = QApplication::applicationDirPath() + "/uxplay-bluetooth-beacon.exe";
     if (!QFile::exists(exe)) {
-        qDebug() << "uxplay-beacon.exe not found";
+        qDebug() << "uxplay-bluetooth-beacon.exe not found";
         return;
     }
 

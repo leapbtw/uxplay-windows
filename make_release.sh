@@ -2,7 +2,7 @@
 set -e # Exit immediately if a command fails
 
 EXE_NAME="uxplay-windows.exe"
-BEACON_EXE="uxplay-beacon.exe"
+BEACON_EXE="uxplay-bluetooth-beacon.exe"
 DIST_DIR="$(pwd)/release"
 BUILD_DIR="$(pwd)/build"
 BEACON_DIR="$(pwd)/libuxplay/Bluetooth_LE_beacon"

@@ -4,6 +4,7 @@
 
 #include <QLabel>
 #include <QMainWindow>
+#include <QComboBox>
 #include <QPushButton>
 #include <QSystemTrayIcon>
 #include <QProcess>
@@ -34,6 +35,9 @@ private slots:
     void onAirplayStopped();
     void onAirplayError(const QString &message);
     void toggleBle(bool checked); // bluetooth
+    void toggleForceFullscreen(bool checked);
+    void onRendererChanged(int index);
+
 
 private:
     void startServer();
@@ -43,6 +47,7 @@ private:
     void updateStatus();
     void startBeacon(const QString &path);
     void stopBeacon();
+    void applyRendererAndFullscreenArgs(QStringList &args);
 
     QProcess *m_beacon = nullptr;
 
@@ -56,7 +61,8 @@ private:
     void setAutostart(bool enabled);
 
     QCheckBox *m_bleCheckbox = nullptr;
-
+    QCheckBox *m_fullscreenCheckbox = nullptr;
+    QComboBox *m_rendererCombo = nullptr;
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_trayMenu = nullptr;
     QAction *m_autostartAction = nullptr;
