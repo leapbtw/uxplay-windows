@@ -19,5 +19,8 @@ jobs:
       - name: Visualizza versione dei runtime .NET
         run: dotnet --list-runtimes
 
+      - name: install wix
+        run: dotnet tool install --global wix
+
       - name: test wix
         run: wix --version
