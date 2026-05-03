@@ -34,7 +34,7 @@
     </Feature>
 
     <ComponentGroup Id="AppFiles" Directory="INSTALLDIR">
-      <Files Include="C:/Users/l/Downloads/uxplay-windows/**">
+      <Files Include="./release/**">
         <Exclude Files="**/*.pdb;**/uxplay-windows.exe" />
       </Files>
     </ComponentGroup>
