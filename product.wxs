@@ -43,7 +43,7 @@
       <Component Id="AppExeComponent"
                  Guid="e5f23b9b-b726-4738-85ba-63892cff1924">
         <File Id="AppExeFile"
-              Source="./uxplay-windows.exe"
+              Source="./release/uxplay-windows.exe"
               KeyPath="yes">
           <Shortcut
             Name="uxplay-windows"
