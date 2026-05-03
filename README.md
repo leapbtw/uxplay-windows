@@ -51,7 +51,7 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 - make an update checker
 - rename stream window
 - autostart
-- 
+- easy fullscreen
 
 ## Known Issues
 - uxplay bugs out when waking PC from Sleep
