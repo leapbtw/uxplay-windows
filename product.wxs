@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Id="uxplaywindows"
+    Name="uxplay-windows"
+    Manufacturer="leapbtw"
+    Version="2.0.0.1736"
+    UpgradeCode="00000eaf-dcca-458f-ab77-aaef11ce4ba8"
+    Language="1033"
+    Scope="perMachine">
+
+    <MajorUpgrade AllowDowngrades="yes" />
+    <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLDIR" Name="uxplay-windows" />
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="uxplay-windows" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="AppExe" />
+    </Feature>
+
+    <Feature
+      Id="DesktopShortcuts"
+      Title="Desktop Shortcut"
+      Description="Create a shortcut on the desktop"
+      Level="1">
+      <ComponentRef Id="DesktopShortcutComponent" />
+    </Feature>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLDIR">
+      <Files Include="C:/Users/l/Downloads/uxplay-windows/**">
+        <Exclude Files="**/*.pdb;**/uxplay-windows.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <ComponentGroup Id="AppExe" Directory="INSTALLDIR">
+      <Component Id="AppExeComponent"
+                 Guid="e5f23b9b-b726-4738-85ba-63892cff1924">
+        <File Id="AppExeFile"
+              Source="./uxplay-windows.exe"
+              KeyPath="yes">
+          <Shortcut
+            Name="uxplay-windows"
+            Directory="ProgramMenuFolder"
+            WorkingDirectory="INSTALLDIR"
+            Advertise="no" />
+        </File>
+      </Component>
+    </ComponentGroup>
+
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Component Id="DesktopShortcutComponent"
+               Guid="63bb69df-4292-4053-848c-fb369bed6273"
+               Directory="DesktopFolder">
+      <RegistryValue
+        Root="HKCU"
+        Key="Software\leapbtw\uxplay-windows"
+        Name="DesktopShortcut"
+        Type="integer"
+        Value="1"
+        KeyPath="yes" />
+      <Shortcut
+        Name="uxplay-windows"
+        Directory="DesktopFolder"
+        Target="[INSTALLDIR]uxplay-windows.exe"
+        WorkingDirectory="INSTALLDIR"
+        Advertise="no" />
+    </Component>
+
+  </Package>
+</Wix>
