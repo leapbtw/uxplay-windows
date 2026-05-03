@@ -20,10 +20,6 @@ jobs:
       contents: write
 
     steps:
-      - name: verify OS version
-        shell: powershell
-        run: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
-
       - name: clone the repo
         uses: actions/checkout@v5
         with:
@@ -120,6 +116,43 @@ jobs:
           where windeployqt
           windeployqt --version
           ./make_release_CI.sh
+
+      - name: where are we?
+        run: pwd && ls
+
+      - name: cache dotnet tools (wix)
+        uses: actions/cache@v5
+        with:
+          path: |
+            C:\Users\runneradmin\.dotnet\tools
+            C:\Users\runneradmin\.nuget\packages
+          key: dotnet-tools-${{ runner.os }}-wix-v1
+          restore-keys: |
+            dotnet-tools-${{ runner.os }}-
+
+      - name: install wix toolset
+        shell: powershell
+        run: |
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          if (-not (Get-Command wix -ErrorAction SilentlyContinue)) { dotnet tool install --global wix }
+
+      - name: build msi installer
+        shell: powershell
+        run: |
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+
+          wix extension add WixToolset.UI.wixext -acceptEula wix7
+
+          wix build -acceptEula wix7 product.wxs `
+            -arch x64 `
+            -out uxplaywindows-installer.msi `
+            -ext WixToolset.UI.wixext
+
+      - name: upload msi artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: uxplay-windows-msi
+          path: uxplaywindows-installer.msi
 
       - name: uploading artifact
         uses: actions/upload-artifact@v5
