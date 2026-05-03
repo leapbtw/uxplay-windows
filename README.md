@@ -49,12 +49,10 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 
 ## TODO
 - make an update checker
-- autostart
-- fix sleep?
 
 ## Known Issues
-- uxplay bugs out when waking PC from Sleep
-  - you can fix this by killing uxplay.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.
+~~- uxplay bugs out when waking PC from Sleep
+  - you can fix this by killing uxplay.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.~~ Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
 
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
