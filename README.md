@@ -57,4 +57,4 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
 
 ## License
-Please take a look at the [LICENSE](./LICENSE).
+Please take a look at the [LICENSE](./LICENSE.rtf).
