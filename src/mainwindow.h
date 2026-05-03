@@ -45,8 +45,8 @@ private:
     void setupTray();
     void setupUI();
     void updateStatus();
-    void startBeacon(const QString &path);
-    void stopBeacon();
+    void startBluetoothBeacon(const QString &path);
+    void stopBluetoothBeacon();
     void applyRendererAndFullscreenArgs(QStringList &args);
 
     QProcess *m_beacon = nullptr;

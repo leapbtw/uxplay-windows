@@ -42,9 +42,8 @@ BOOL CALLBACK EnumWindowsProcRename(HWND hwnd, LPARAM lParam) {
         if (GetWindowTextA(hwnd, windowTitle, sizeof(windowTitle))) {
             QString title = QString::fromLocal8Bit(windowTitle);
             
-            if (title.contains("Direct3D12 Renderer") || 
-                title.contains("Direct3D11 Renderer")) {
-                
+            if (title.contains("Direct") && title.contains("enderer")) {
+                printf("found window to rename, setting new name...\n");
                 SetWindowTextW(hwnd, reinterpret_cast<const wchar_t*>(data->newTitle.utf16()));
                 return FALSE;
             }
@@ -339,7 +338,7 @@ void MainWindow::onAirplayStarted() {
     updateStatus();
 
     // rename video window when it pops up
-    printf("onAirplayStarted()!");
+    printf("onAirplayStarted()!\n");
     QTimer *monitorTimer = new QTimer(this);
     connect(monitorTimer, &QTimer::timeout, this, [this, monitorTimer]() {
         if (!m_running) {
@@ -354,7 +353,7 @@ void MainWindow::onAirplayStarted() {
 
         EnumWindows(EnumWindowsProcRename, reinterpret_cast<LPARAM>(&info));
     });
-    monitorTimer->start(2000); // Controlla ogni 2 secondi
+    monitorTimer->start(5000);
 
 }
 
