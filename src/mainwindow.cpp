@@ -26,6 +26,33 @@
 #include <QTextStream>
 #include <QMessageBox>
 
+struct RenameData {
+    DWORD pid;
+    QString newTitle;
+};
+
+// Callback method that Windows calls for every opened window
+BOOL CALLBACK EnumWindowsProcRename(HWND hwnd, LPARAM lParam) {
+    RenameData *data = reinterpret_cast<RenameData*>(lParam);
+    DWORD windowPid;
+    GetWindowThreadProcessId(hwnd, &windowPid);
+
+    if (windowPid == data->pid) {
+        char windowTitle[512];
+        if (GetWindowTextA(hwnd, windowTitle, sizeof(windowTitle))) {
+            QString title = QString::fromLocal8Bit(windowTitle);
+            
+            if (title.contains("Direct3D12 Renderer") || 
+                title.contains("Direct3D11 Renderer")) {
+                
+                SetWindowTextW(hwnd, reinterpret_cast<const wchar_t*>(data->newTitle.utf16()));
+                return FALSE;
+            }
+        }
+    }
+    return TRUE;
+}
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     ensureSettingsFileExists();
     setupTray();
@@ -267,7 +294,6 @@ void MainWindow::startServer() {
         }
     }
 
-    // Applica le nuove opzioni (-fs e renderer)
     applyRendererAndFullscreenArgs(args);
 
     // Only add -ble and start beacon if checkbox is checked
@@ -275,9 +301,10 @@ void MainWindow::startServer() {
     if (m_bleCheckbox->isChecked()) {
         QString bleFilePath = QDir::toNativeSeparators(appData + "/uxplay_status.ble");
         args << "-ble" << bleFilePath;
-        startBeacon(bleFilePath);
+        startBluetoothBeacon
+    (bleFilePath);
     } else {
-        stopBeacon();
+        stopBluetoothBeacon();
     }
 
     m_worker = new AirPlayWorker(this);
@@ -291,7 +318,7 @@ void MainWindow::startServer() {
 }
 
 void MainWindow::stopServer() {
-    stopBeacon();
+    stopBluetoothBeacon();
     if (m_worker) {
         m_worker->disconnect();
         if (m_worker->isRunning()) {
@@ -310,6 +337,25 @@ void MainWindow::stopServer() {
 void MainWindow::onAirplayStarted() {
     m_running = true;
     updateStatus();
+
+    // rename video window when it pops up
+    printf("onAirplayStarted()!");
+    QTimer *monitorTimer = new QTimer(this);
+    connect(monitorTimer, &QTimer::timeout, this, [this, monitorTimer]() {
+        if (!m_running) {
+            monitorTimer->stop();
+            monitorTimer->deleteLater();
+            return;
+        }
+
+        RenameData info;
+        info.pid = GetCurrentProcessId();
+        info.newTitle = "AirPlay Video Stream"; 
+
+        EnumWindows(EnumWindowsProcRename, reinterpret_cast<LPARAM>(&info));
+    });
+    monitorTimer->start(2000); // Controlla ogni 2 secondi
+
 }
 
 void MainWindow::onAirplayStopped() {
@@ -349,7 +395,7 @@ void MainWindow::setAutostart(bool enabled) {
     }
 }
 
-void MainWindow::startBeacon(const QString &path) {
+void MainWindow::startBluetoothBeacon(const QString &path) {
     if (m_beacon && m_beacon->state() != QProcess::NotRunning)
         return;
 
@@ -367,12 +413,12 @@ void MainWindow::startBeacon(const QString &path) {
         qDebug() << "[beacon output]" << m_beacon->readAll().trimmed();
     });
 
-    // Pass the explicit path to the beacon
+    // Pass the explicit path to the beacon file
     m_beacon->start(exe, {"--path", path});
     qDebug() << "Beacon process started watching:" << path;
 }
 
-void MainWindow::stopBeacon() {
+void MainWindow::stopBluetoothBeacon() {
     if (!m_beacon) return;
     
     qDebug() << "Stopping beacon process";
