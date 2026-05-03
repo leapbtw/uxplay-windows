@@ -118,7 +118,7 @@ jobs:
           ./make_release_CI.sh
 
       - name: where are we?
-        run: pwd && ls
+        run: pwd; ls
 
       - name: cache dotnet tools (wix)
         uses: actions/cache@v5
