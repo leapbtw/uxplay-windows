@@ -104,7 +104,7 @@ QStringList MainWindow::getArgumentsFromFile() {
 void MainWindow::setupUI() {
     setWindowTitle("uxplay-windows");
     setWindowIcon(QApplication::windowIcon());
-    setFixedSize(300, 220);
+    setFixedSize(300, 260);
 
     auto *central = new QWidget(this);
     setCentralWidget(central);
@@ -154,7 +154,7 @@ void MainWindow::setupUI() {
     layout->addWidget(m_settingsBtn);
 
     m_listargsBtn = new QPushButton("List UxPlay arguments", this);
-    connect(m_listargsBtn, &QPushButton::clicked, this, &MainWindow::openSettingsFile);
+    connect(m_listargsBtn, &QPushButton::clicked, this, &MainWindow::openListArgsFile);
     layout->addWidget(m_listargsBtn);
 
     m_autostartBtn = new QPushButton(this);
@@ -197,6 +197,7 @@ void MainWindow::setupTray() {
 
     m_trayMenu = new QMenu(this);
     m_trayMenu->addAction("Quit", this, &MainWindow::quit);
+    m_trayMenu->addAction("Restart", this, &MainWindow::restartApplication);
 
     m_tray->setContextMenu(m_trayMenu);
     

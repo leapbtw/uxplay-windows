@@ -128,12 +128,13 @@ cp ./build/compile_commands.json release/.
 
 
 echo "================================================="
-echo " 6. Copying icon"
+echo " 6. Copying more files over"
 echo "================================================="
 find $PROJECT_ROOT -name *.ico
 mkdir -p release/resources
 cp stuff/newicon.ico release/resources/icon.ico
 cp stuff/uxplay_arguments_list.txt release/resources/uxplay_arguments_list.txt
+cp LICENSE.rtf release/LICENSE.rtf
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"
