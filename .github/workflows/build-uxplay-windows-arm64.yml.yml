@@ -1,0 +1,167 @@
+name: build uxplay-windows-arm64
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tmate_debug_enabled:
+        description: 'Run the build with tmate debugging enabled'
+        default: false
+        required: false
+        type: boolean
+
+jobs:
+  build:
+    name: build uxplay (arm64)
+    runs-on: windows-11-arm
+    permissions:
+      contents: write
+
+    steps:
+      - name: clone the repo
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: cache mDNSResponder build artifacts (Bonjour SDK)
+        uses: actions/cache@v5
+        id: mdns-cache
+        with:
+          path: |
+            Bonjour SDK
+          key: mdns-${{ runner.os }}-arm64-${{
+            hashFiles('mdnsresponder-patches/2881.patch')
+          }}-v3
+          restore-keys: |
+            mdns-${{ runner.os }}-arm64-
+
+      - name: mDNSResponder compilation (arm64)
+        if: steps.mdns-cache.outputs.cache-hit != 'true'
+        shell: powershell
+        run: |
+          git clone --branch rel/mDNSResponder-2881 --depth 1 `
+            --single-branch `
+            https://github.com/apple-oss-distributions/mDNSResponder.git `
+            mdns2881
+
+          cd mdns2881
+          cp -v ../mdnsresponder-patches/2881.patch .
+          git apply -v 2881.patch
+
+          & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe' `
+            .\mDNSWindows\DLL\dnssd.vcxproj /m /t:Build `
+            /p:Configuration=Release /p:Platform=ARM64
+
+          & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe' `
+            .\mDNSWindows\SystemService\mDNSResponder.vcxproj /m /t:Build `
+            /p:Configuration=Release /p:Platform=ARM64
+
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Include' | Out-Null
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Lib\arm64' | Out-Null
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Bin\arm64' | Out-Null
+
+          cp mDNSWindows\DLL\arm64\Release\dnssd.dll                   "..\Bonjour SDK\Bin\arm64\dnssd.dll"
+          cp mDNSWindows\SystemService\arm64\Release\mDNSResponder.exe  "..\Bonjour SDK\Bin\arm64\mDNSResponder.exe"
+          cp mDNSShared\dns_sd.h                                       "..\Bonjour SDK\Include\dns_sd.h"
+          cp mDNSWindows\DLL\arm64\Release\dnssd.lib                   "..\Bonjour SDK\Lib\arm64\dnssd.lib"
+
+          cd ..
+          Remove-Item -Recurse -Force mdns2881
+
+      - name: cache msys2 pacman packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            C:\msys64\var\cache\pacman\pkg
+            C:\msys64\var\lib\pacman\sync
+          key: msys2-pacman-${{ runner.os }}-arm64-${{ hashFiles('ucrt_deps.txt') }}-v2
+          restore-keys: |
+            msys2-pacman-${{ runner.os }}-arm64-
+
+      - name: download+install msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          # NOTA: potresti dover cambiare questo parametro se su arm64
+          # non esistesse/differisse l'architettura UCRT64.
+          msystem: UCRT64
+          update: false
+
+      - name: cache pip and python packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ github.workspace }}/pip-cache
+            C:\msys64\ucrt64\lib\python*\site-packages\winrt*
+          key: pip-winrt-${{ runner.os }}-arm64-v2
+          restore-keys: |
+            pip-winrt-${{ runner.os }}-arm64-
+
+      - name: install build dependencies
+        shell: msys2 {0}
+        run: |
+          export PIP_CACHE_DIR="${PWD}/pip-cache"
+          mkdir -p "$PIP_CACHE_DIR"
+
+          pacman -S --needed --noconfirm - < ucrt_deps.txt
+
+          if ! python -c "import winrt.windows.foundation" 2>/dev/null; then
+            pip install \
+              winrt-Windows.Foundation \
+              winrt-Windows.Foundation.Collections \
+              winrt-Windows.Devices.Bluetooth.Advertisement \
+              winrt-Windows.Storage.Streams \
+              --break-system-packages
+          fi
+
+      - name: make release! (arm64)
+        shell: msys2 {0}
+        run: |
+          where windeployqt
+          windeployqt --version
+          ./make_release_CI_arm64.sh
+
+      - name: where are we?
+        run: pwd; ls
+
+      - name: cache dotnet tools (wix)
+        uses: actions/cache@v5
+        with:
+          path: |
+            C:\Users\runneradmin\.dotnet\tools
+            C:\Users\runneradmin\.nuget\packages
+          key: dotnet-tools-${{ runner.os }}-arm64-wix-v1
+          restore-keys: |
+            dotnet-tools-${{ runner.os }}-arm64-
+
+      - name: install wix toolset
+        shell: powershell
+        run: |
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          if (-not (Get-Command wix -ErrorAction SilentlyContinue)) { dotnet tool install --global wix }
+
+      - name: build msi installer (arm64)
+        shell: powershell
+        run: |
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+
+          wix extension add WixToolset.UI.wixext -acceptEula wix7
+
+          wix build -acceptEula wix7 product.wxs `
+            -arch arm64 `
+            -out uxplaywindows-installer-arm64.msi `
+            -ext WixToolset.UI.wixext
+
+      - name: upload msi artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: uxplay-windows-arm64-msi
+          path: uxplaywindows-installer-arm64.msi
+
+      - name: uploading artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: uxplay-windows-arm64
+          path: release/**
