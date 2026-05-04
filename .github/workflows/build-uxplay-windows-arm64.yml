@@ -20,6 +20,9 @@ jobs:
       contents: write
 
     steps:
+      - name: check for arm64
+        run: systeminfo | findstr /C:"System Type"
+
       - name: clone the repo
         uses: actions/checkout@v5
         with:
@@ -58,13 +61,13 @@ jobs:
             /p:Configuration=Release /p:Platform=ARM64
 
           New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Include' | Out-Null
-          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Lib\arm64' | Out-Null
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Lib\x64' | Out-Null
           New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Bin\arm64' | Out-Null
 
           cp mDNSWindows\DLL\arm64\Release\dnssd.dll                   "..\Bonjour SDK\Bin\arm64\dnssd.dll"
           cp mDNSWindows\SystemService\arm64\Release\mDNSResponder.exe  "..\Bonjour SDK\Bin\arm64\mDNSResponder.exe"
           cp mDNSShared\dns_sd.h                                       "..\Bonjour SDK\Include\dns_sd.h"
-          cp mDNSWindows\DLL\arm64\Release\dnssd.lib                   "..\Bonjour SDK\Lib\arm64\dnssd.lib"
+          cp mDNSWindows\DLL\arm64\Release\dnssd.lib                   "..\Bonjour SDK\Lib\x64\dnssd.lib" # hardcoded in cmake
 
           cd ..
           Remove-Item -Recurse -Force mdns2881
