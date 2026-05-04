@@ -30,6 +30,7 @@ private slots:
     void toggleAutostart();
     void showLicense();
     void openSettingsFile();
+    void openListArgsFile();
     void quit();
     void onAirplayStarted();
     void onAirplayStopped();
@@ -70,6 +71,7 @@ private:
 
     QPushButton *m_autostartBtn = nullptr;
     QPushButton *m_settingsBtn = nullptr;
+    QPushButton *m_listargsBtn = nullptr;
     QPushButton *m_licenseBtn = nullptr;
     QLabel *m_statusLabel = nullptr;
 

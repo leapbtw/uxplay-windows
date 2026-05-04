@@ -133,6 +133,7 @@ echo "================================================="
 find $PROJECT_ROOT -name *.ico
 mkdir -p release/resources
 cp stuff/newicon.ico release/resources/icon.ico
+cp stuff/uxplay_arguments_list.txt release/resources/uxplay_arguments_list.txt
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"

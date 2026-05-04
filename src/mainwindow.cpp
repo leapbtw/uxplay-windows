@@ -122,7 +122,7 @@ void MainWindow::setupUI() {
     layout->addWidget(m_bleCheckbox);
 
     // Force Fullscreen Checkbox
-    m_fullscreenCheckbox = new QCheckBox("Force Fullscreen", this);
+    m_fullscreenCheckbox = new QCheckBox("Force Fullscreen (must select renderer)", this);
     m_fullscreenCheckbox->setChecked(
         settings.value("force_fs_enabled", false).toBool()
     );
@@ -149,9 +149,13 @@ void MainWindow::setupUI() {
     layout->addWidget(m_rendererCombo);
 
 
-    m_settingsBtn = new QPushButton("Edit Server Settings", this);
+    m_settingsBtn = new QPushButton("Edit UxPlay Arguments (Advanced)", this);
     connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettingsFile);
     layout->addWidget(m_settingsBtn);
+
+    m_listargsBtn = new QPushButton("List UxPlay arguments", this);
+    connect(m_listargsBtn, &QPushButton::clicked, this, &MainWindow::openSettingsFile);
+    layout->addWidget(m_listargsBtn);
 
     m_autostartBtn = new QPushButton(this);
     connect(m_autostartBtn, &QPushButton::clicked, this, &MainWindow::toggleAutostart);
@@ -172,6 +176,12 @@ void MainWindow::openSettingsFile() {
     
     m_tray->showMessage("Settings", "Restart the app or disconnect current session to apply new arguments.", 
                         QSystemTrayIcon::Information, 3000);
+}
+
+void MainWindow::openListArgsFile() {
+    QString filePath = QApplication::applicationDirPath() + "/resources/uxplay_arguments_list.txt";
+    QFile::setPermissions(filePath, QFile::ReadOwner | QFile::ReadGroup | QFile::ReadOther);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
 }
 
 void MainWindow::setupTray() {
@@ -436,10 +446,10 @@ void MainWindow::stopBluetoothBeacon() {
 }
 
 void MainWindow::showLicense() {
-    QString path = QApplication::applicationDirPath() + "/LICENSE.md";
+    QString path = QApplication::applicationDirPath() + "/LICENSE.rtf";
     if (QFile::exists(path)) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-    }
+    } else qDebug() << "License file not found:" << path;
 }
 
 void MainWindow::quit() {
