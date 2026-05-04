@@ -1,12 +1,7 @@
-> [!NOTE]
-> (16 mar 2026) \
-> I am actively working on an update for uxplay-windows on other branches. \
-> The goal is to make a better and less buggy software, and hopefully drop the Bonjour dependency \
-> (20 apr 2026) \
-> I've now merged the cpp rewrite into main. Automatic builds when forking are most likely broken. \
-> I'll work on finish the rewrite and then i'll worry about it.
-> (3 may 2026) \
-> I'm almost done with the new version
+```diff
++ 4 may 2026
++ new version is finally out! check it out in the releases section!
+```
 
 # FREE AirPlay to your Windows PC
 Free as both in "freedom" and "free beer"!
@@ -14,7 +9,8 @@ Free as both in "freedom" and "free beer"!
 ## Installation
 Download the latest version of uxplay-windows from [**releases**](https://github.com/leapbtw/uxplay-windows/releases/latest).
 
-After installing, control uxplay-windows from it's [tray icon](https://www.odu.edu/sites/default/files/documents/win10-system-tray.pdf)! Right-click it to start or stop AirPlay. You can also set it to run automatically when your PC starts
+After installing, control uxplay-windows from it's [tray icon](https://www.odu.edu/sites/default/files/documents/win10-system-tray.pdf)! Right-click it to start or stop AirPlay. \
+You can also set it to run automatically when your PC starts
 
 ## FAQ — Please Read!
 > [!NOTE]
@@ -22,13 +18,14 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 > 
 > [uxplay-windows](.) is a software that allows you to video stream with AirPlay to your windows PC. \
 > It turns [UxPlay](https://github.com/FDH2/UxPlay/) into a fully featured App for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging.
+> 
 > Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
 
 
 > [!TIP]
 > *My \<apple device\> can't connect to my PC!!!*
-> 1. Check if the `uxplay.exe` is running: right-click the tray icon and restart it.
-> 2. Toggle Wi-Fi OFF on your iPhone/iPad/Mac, wait a couple of seconds and reconnect. It might take a few attempts.
+> 1. Check if the `uxplay-windows.exe` is running: right-click the tray icon and restart it.
+> 2. Toggle Wi-Fi and Bluetooth OFF on your iPhone/iPad/Mac, wait a couple of seconds and reconnect. It might take a few attempts.
 > 3. As last resort, close uxplay-windows, open Task Manager and restart `Bonjour Service` from the Services tab. Then reopen uxplay-windows and try again
 
 > [!IMPORTANT]
@@ -51,8 +48,9 @@ After installing, control uxplay-windows from it's [tray icon](https://www.odu.e
 - make an update checker
 
 ## Known Issues
-~~- uxplay bugs out when waking PC from Sleep
-  - you can fix this by killing uxplay.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.~~ Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
+~~uxplay bugs out when waking PC from Sleep~~
+~~you can fix this by killing uxplay-windows.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.~~  \
+Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
 
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
