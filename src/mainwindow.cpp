@@ -24,7 +24,6 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QTextStream>
-#include <QMessageBox>
 
 struct RenameData {
     DWORD pid;
@@ -174,7 +173,7 @@ void MainWindow::openSettingsFile() {
     QString filePath = appDataPath + "/arguments.txt";
     QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
     
-    m_tray->showMessage("Settings", "Restart the app or disconnect current session to apply new arguments.", 
+    m_tray->showMessage("Settings", "Restart the app to apply new arguments.", 
                         QSystemTrayIcon::Information, 3000);
 }
 
@@ -220,7 +219,8 @@ void MainWindow::toggleBle(bool checked) {
 
     settings.setValue("ble_enabled", checked);
     
-    QMessageBox::information(this, "uxplay-windows", "Please restart the uxplay-windows to apply changes.\n\n(Right click the tray icon to Quit.)");
+    m_tray->showMessage("uxplay-windows", "Please restart the uxplay-windows to apply changes.\n(Right-click the Tray Icon)", 
+                        QSystemTrayIcon::Information, 3000);
 }
 
 void MainWindow::toggleForceFullscreen(bool checked) {
@@ -230,11 +230,8 @@ void MainWindow::toggleForceFullscreen(bool checked) {
     }
 
     settings.setValue("force_fs_enabled", checked);
-    QMessageBox::information(
-        this, "uxplay-windows",
-        "Please restart the uxplay-windows to apply changes.\n\n"
-        "(Right click the tray icon to Quit.)"
-    );
+    m_tray->showMessage("uxplay-windows", "Please restart the uxplay-windows to apply changes.\n(Right-click the Tray Icon)", 
+                        QSystemTrayIcon::Information, 3000);
 }
 
 void MainWindow::onRendererChanged(int /*index*/) {
@@ -247,11 +244,8 @@ void MainWindow::onRendererChanged(int /*index*/) {
     if (saved == mode) return;
 
     settings.setValue("renderer_mode", mode);
-    QMessageBox::information(
-        this, "uxplay-windows",
-        "Please restart the uxplay-windows to apply changes.\n\n"
-        "(Right click the tray icon to Quit.)"
-    );
+    m_tray->showMessage("uxplay-windows", "Please restart the uxplay-windows to apply changes.\n(Right-click the Tray Icon)", 
+                        QSystemTrayIcon::Information, 3000);
 }
 
 void MainWindow::applyRendererAndFullscreenArgs(QStringList &args) {
@@ -360,7 +354,7 @@ void MainWindow::onAirplayStarted() {
 
         RenameData info;
         info.pid = GetCurrentProcessId();
-        info.newTitle = "AirPlay Video Stream"; 
+        info.newTitle = "AirPlay Video Stream (ALT+ENTER for Fullscreen)"; 
 
         EnumWindows(EnumWindowsProcRename, reinterpret_cast<LPARAM>(&info));
     });
@@ -469,9 +463,9 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::updateStatus() {
-    QString status = m_running ? "Server running" : "Server stopped";
+    QString status = m_running ? "UxPlay server running" : "UxPlay server stopped";
     m_statusLabel->setText(status);
-    m_autostartBtn->setText(isAutostartEnabled() ? "Disable Autostart" : "Enable Autostart");
+    m_autostartBtn->setText(isAutostartEnabled() ? "Open uxplay-windows on login: ON " : "Open uxplay-windows on login: OFF");
 }
 
 bool MainWindow::isWindowsServicePresent(const std::wstring& serviceName) const {
