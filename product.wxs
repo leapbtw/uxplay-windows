@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+     
+  <!-- version number is mayor.minor.zero.uxplayversion -->
   <Package
     Id="uxplaywindows"
     Name="uxplay-windows"
     Manufacturer="leapbtw"
-    Version="2.0.0.1736"
+    Version="2.1.0.1736"
     UpgradeCode="00000eaf-dcca-458f-ab77-aaef11ce4ba8"
     Language="1033"
     Scope="perMachine">
