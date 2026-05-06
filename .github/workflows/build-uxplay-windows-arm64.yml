@@ -79,7 +79,7 @@ jobs:
           path: |
             C:\msys64\var\cache\pacman\pkg
             C:\msys64\var\lib\pacman\sync
-          key: msys2-pacman-${{ runner.os }}-arm64-${{ hashFiles('ucrt_deps.txt') }}-v2
+          key: msys2-pacman-${{ runner.os }}-arm64-${{ hashFiles('ucrt_arm64_dependencies.txt') }}-v2
           restore-keys: |
             msys2-pacman-${{ runner.os }}-arm64-
 
@@ -107,7 +107,7 @@ jobs:
           export PIP_CACHE_DIR="${PWD}/pip-cache"
           mkdir -p "$PIP_CACHE_DIR"
 
-          pacman -S --needed --noconfirm - < ucrt_deps.txt
+          pacman -S --needed --noconfirm - < ucrt_arm64_dependencies.txt
 
           if ! python -c "import winrt.windows.foundation" 2>/dev/null; then
             pip install \
