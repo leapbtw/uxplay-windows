@@ -86,17 +86,8 @@ jobs:
       - name: download+install msys2
         uses: msys2/setup-msys2@v2
         with:
-          # NOTA: potresti dover cambiare questo parametro se su arm64
-          # non esistesse/differisse l'architettura UCRT64.
           msystem: UCRT64
           update: false
-
-      - name: test pip
-        shell: msys2 {0}
-        run: |
-          which python
-          which pip
-          python -m pip --version
 
       - name: cache pip and python packages
         uses: actions/cache@v5
@@ -115,6 +106,10 @@ jobs:
           mkdir -p "$PIP_CACHE_DIR"
 
           pacman -S --needed --noconfirm - < ucrt_arm64_dependencies.txt
+
+          which python
+          which pip
+          python -m pip --version
 
           if ! python -c "import winrt.windows.foundation" 2>/dev/null; then
             pip install \
