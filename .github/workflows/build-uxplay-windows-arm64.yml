@@ -116,8 +116,9 @@ jobs:
               --break-system-packages
           fi
 
-          where cmake
-
+      - name: make release! (arm64)
+        shell: msys2 {0}
+        run: |
           where windeployqt
           windeployqt --version
           ./make_release_CI_arm64.sh
