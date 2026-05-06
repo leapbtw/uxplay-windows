@@ -79,14 +79,14 @@ jobs:
           path: |
             C:\msys64\var\cache\pacman\pkg
             C:\msys64\var\lib\pacman\sync
-          key: msys2-pacman-${{ runner.os }}-arm64-${{ hashFiles('ucrt_arm64_dependencies.txt') }}-v2
+          key: msys2-pacman-${{ runner.os }}-arm64-${{ hashFiles('clangarm64_dependencies.txt') }}-v2
           restore-keys: |
             msys2-pacman-${{ runner.os }}-arm64-
 
       - name: download+install msys2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: UCRT64
+          msystem: CLANGARM64
           update: false
 
       - name: cache pip and python packages
@@ -94,7 +94,7 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/pip-cache
-            C:\msys64\ucrt64\lib\python*\site-packages\winrt*
+            C:\msys64\clangarm64\lib\python*\site-packages\winrt*
           key: pip-winrt-${{ runner.os }}-arm64-v2
           restore-keys: |
             pip-winrt-${{ runner.os }}-arm64-
@@ -105,7 +105,7 @@ jobs:
           export PIP_CACHE_DIR="${PWD}/pip-cache"
           mkdir -p "$PIP_CACHE_DIR"
 
-          pacman -S --needed --noconfirm - < ucrt_arm64_dependencies.txt
+          pacman -S --needed --noconfirm - < clangarm64_dependencies.txt
 
           which python
           which pip
