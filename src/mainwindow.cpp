@@ -8,10 +8,13 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QDebug>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
@@ -56,6 +59,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setupTray();
     setupUI();
 
+    // Force creation of the hidden top-level HWND so Windows power events reach us.
+    winId();
+
+    m_wakeRestartTimer = new QTimer(this);
+    m_wakeRestartTimer->setSingleShot(true);
+    connect(m_wakeRestartTimer, &QTimer::timeout,
+            this, &MainWindow::restartApplicationAfterWake);
+
     // If Bonjour Service is missing, we must install it; otherwise we exit.
     if (ensureBonjourServiceInstalled()) {
         startServer();
@@ -89,13 +100,13 @@ void MainWindow::ensureSettingsFileExists() {
     }
 }
 
-QStringList MainWindow::getArgumentsFromFile() {
+QStringList MainWindow::getArgumentsFromFile() const {
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QFile file(appDataPath + "/arguments.txt");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QString content = QTextStream(&file).readAll().trimmed();
         file.close();
-        return content.split(" ", Qt::SkipEmptyParts);
+        return QProcess::splitCommand(content);
     }
     return QStringList() << "-n" << "uxplay-windows" << "-nh";
 }
@@ -103,7 +114,7 @@ QStringList MainWindow::getArgumentsFromFile() {
 void MainWindow::setupUI() {
     setWindowTitle("uxplay-windows");
     setWindowIcon(QApplication::windowIcon());
-    setFixedSize(300, 260);
+    setFixedSize(360, 320);
 
     auto *central = new QWidget(this);
     setCentralWidget(central);
@@ -112,6 +123,19 @@ void MainWindow::setupUI() {
     m_statusLabel = new QLabel("Initializing...", this);
     m_statusLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(m_statusLabel);
+
+    auto *nameLayout = new QHBoxLayout();
+    auto *nameLabel = new QLabel("AirPlay Name", this);
+    m_displayNameEdit = new QLineEdit(this);
+    m_displayNameEdit->setText(displayNameFromSettingsOrArgs());
+    m_displayNameEdit->setPlaceholderText("uxplay-windows");
+    auto *applyNameBtn = new QPushButton("Apply", this);
+    connect(applyNameBtn, &QPushButton::clicked, this, &MainWindow::applyDisplayName);
+    connect(m_displayNameEdit, &QLineEdit::returnPressed, this, &MainWindow::applyDisplayName);
+    nameLayout->addWidget(nameLabel);
+    nameLayout->addWidget(m_displayNameEdit, 1);
+    nameLayout->addWidget(applyNameBtn);
+    layout->addLayout(nameLayout);
 
     // Bluetooth Discovery Checkbox
     m_bleCheckbox = new QCheckBox("Enable Bluetooth Discovery", this);
@@ -248,6 +272,72 @@ void MainWindow::onRendererChanged(int /*index*/) {
                         QSystemTrayIcon::Information, 3000);
 }
 
+QString MainWindow::displayNameFromSettingsOrArgs() const {
+    QSettings settings;
+    QString savedName = settings.value("display_name").toString().trimmed();
+    if (!savedName.isEmpty()) {
+        return savedName;
+    }
+
+    QStringList args = getArgumentsFromFile();
+    int nameIdx = args.indexOf("-n");
+    if (nameIdx >= 0 && nameIdx + 1 < args.size()) {
+        QString nameFromArgs = args[nameIdx + 1].trimmed();
+        if (!nameFromArgs.isEmpty()) {
+            return nameFromArgs;
+        }
+    }
+
+    return "uxplay-windows";
+}
+
+void MainWindow::applyDisplayNameArg(QStringList &args) const {
+    for (int i = 0; i < args.size();) {
+        if (args[i] == "-n") {
+            args.removeAt(i);
+            if (i < args.size() && !args[i].startsWith("-")) {
+                args.removeAt(i);
+            }
+            continue;
+        }
+
+        if (args[i] == "-nh") {
+            args.removeAt(i);
+            continue;
+        }
+
+        ++i;
+    }
+
+    QString displayName = displayNameFromSettingsOrArgs();
+    args << "-n" << displayName << "-nh";
+}
+
+void MainWindow::applyDisplayName() {
+    if (!m_displayNameEdit) return;
+
+    QString displayName = m_displayNameEdit->text().trimmed();
+    if (displayName.isEmpty()) {
+        QMessageBox::warning(this, "AirPlay Name", "Enter a name for this AirPlay receiver.");
+        m_displayNameEdit->setText(displayNameFromSettingsOrArgs());
+        return;
+    }
+
+    QSettings settings;
+    if (settings.value("display_name").toString() == displayName) {
+        return;
+    }
+
+    settings.setValue("display_name", displayName);
+    m_displayNameEdit->setText(displayName);
+
+    m_tray->showMessage("uxplay-windows",
+                        "Restarting uxplay-windows with the new AirPlay name.",
+                        QSystemTrayIcon::Information, 3000);
+
+    restartApplication();
+}
+
 void MainWindow::applyRendererAndFullscreenArgs(QStringList &args) {
     while (true) {
         int idx = args.indexOf("-fs");
@@ -299,6 +389,7 @@ void MainWindow::startServer() {
     }
 
     applyRendererAndFullscreenArgs(args);
+    applyDisplayNameArg(args);
 
     // Only add -ble and start beacon if checkbox is checked
     if (!m_bleCheckbox) return;
@@ -316,6 +407,7 @@ void MainWindow::startServer() {
 
     connect(m_worker, &AirPlayWorker::started, this, &MainWindow::onAirplayStarted);
     connect(m_worker, &AirPlayWorker::stopped, this, &MainWindow::onAirplayStopped);
+    connect(m_worker, &AirPlayWorker::errorOccurred, this, &MainWindow::onAirplayError);
     connect(m_worker, &AirPlayWorker::finished, m_worker, &QObject::deleteLater);
 
     m_worker->start();
@@ -460,6 +552,46 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     } else {
         event->accept();
     }
+}
+
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
+    MSG *msg = static_cast<MSG *>(message);
+    if (msg && msg->message == WM_POWERBROADCAST) {
+        switch (msg->wParam) {
+        case PBT_APMRESUMEAUTOMATIC:
+        case PBT_APMRESUMESUSPEND:
+        case PBT_APMRESUMECRITICAL:
+            scheduleWakeRestart();
+            break;
+        default:
+            break;
+        }
+    }
+
+    return QMainWindow::nativeEvent(eventType, message, result);
+}
+
+void MainWindow::scheduleWakeRestart() {
+    if (m_quitting || !m_wakeRestartTimer) {
+        return;
+    }
+
+    qDebug() << "Windows resumed from sleep; scheduling application restart to refresh discovery";
+    m_wakeRestartTimer->start(5000);
+}
+
+void MainWindow::restartApplicationAfterWake() {
+    if (m_quitting) {
+        return;
+    }
+
+    if (m_tray) {
+        m_tray->showMessage("uxplay-windows",
+                            "Windows woke from sleep. Restarting to refresh AirPlay discovery.",
+                            QSystemTrayIcon::Information, 3000);
+    }
+
+    restartApplication();
 }
 
 void MainWindow::updateStatus() {
