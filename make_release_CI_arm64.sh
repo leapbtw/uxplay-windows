@@ -65,12 +65,12 @@ cp "$BUILD_DIR/$EXE_NAME" "$DIST_DIR/"
 cp "$BEACON_DIR/dist/$BEACON_EXE" "$DIST_DIR/"
 
 echo "================================================="
-echo " 4. Gathering BIG runtime bundle for CI (only from stuff/dll.txt)"
+echo " 4. Gathering BIG runtime bundle for CI (only from stuff/dll_arm64.txt)"
 echo "================================================="
 
-DLL_LIST_FILE="$PROJECT_ROOT/stuff/dll.txt"
+DLL_LIST_FILE="$PROJECT_ROOT/stuff/dll_arm64.txt"
 if [ ! -f "$DLL_LIST_FILE" ]; then
-  echo "ERROR: dll.txt not found at: $DLL_LIST_FILE" >&2
+  echo "ERROR: dll_arm64.txt not found at: $DLL_LIST_FILE" >&2
   exit 1
 fi
 
@@ -111,7 +111,7 @@ while IFS= read -r dll_path; do
   copy_one_dll "$dll_path"
 done < "$DLL_LIST_FILE"
 
-echo "Big runtime bundle copied (restricted to dll.txt)."
+echo "Big runtime bundle copied (restricted to dll_arm64.txt)."
 
 echo "================================================="
 echo " 5. Finalizing Qt Dependencies (windeployqt)"
