@@ -59,7 +59,7 @@ echo " 3. Preparing Clean Dist Folder"
 echo "================================================="
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR/lib/gstreamer-1.0"
-[ -f "LICENSE.md" ] && cp "LICENSE.md" "$DIST_DIR/"
+[ -f "docs/LICENSE.rtf" ] && cp "docs/LICENSE.rtf" "$DIST_DIR/"
 
 cp "$BUILD_DIR/$EXE_NAME" "$DIST_DIR/"
 cp "$BEACON_DIR/dist/$BEACON_EXE" "$DIST_DIR/"
@@ -136,7 +136,6 @@ mkdir -p release/resources
 cp stuff/newicon.ico release/resources/icon.ico
 cp stuff/uxplay_arguments_list.txt \
   release/resources/uxplay_arguments_list.txt
-cp LICENSE.rtf release/LICENSE.rtf
 
 echo "================================================="
 echo " ✅ Done! Package is ready in $DIST_DIR"

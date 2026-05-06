@@ -41,7 +41,7 @@ You can also set it to run automatically when your PC starts
 > [!NOTE]
 >  *How do I build this software myself?*
 > 
-> Please see [BUILDING.md](./BUILDING.md)
+> Please see [BUILDING.md](./docs/BUILDING.md)
 <br>
 
 ## TODO
@@ -56,4 +56,4 @@ Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.
 
 ## License
-Please take a look at the [LICENSE](./LICENSE.rtf).
+Please take a look at the [LICENSE](./docs/LICENSE.rtf).
