@@ -107,10 +107,6 @@ jobs:
 
           pacman -S --needed --noconfirm - < clangarm64_dependencies.txt
 
-          which python
-          which pip
-          python -m pip --version
-
           if ! python -c "import winrt.windows.foundation" 2>/dev/null; then
             pip install \
               winrt-Windows.Foundation \
@@ -120,9 +116,8 @@ jobs:
               --break-system-packages
           fi
 
-      - name: make release! (arm64)
-        shell: msys2 {0}
-        run: |
+          where cmake
+
           where windeployqt
           windeployqt --version
           ./make_release_CI_arm64.sh
