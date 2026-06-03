@@ -35,6 +35,7 @@ private slots:
     void onAirplayStarted();
     void onAirplayStopped();
     void onAirplayError(const QString &message);
+    void viewLogs();
     void toggleBle(bool checked); // bluetooth
     void toggleForceFullscreen(bool checked);
     void onRendererChanged(int index);
