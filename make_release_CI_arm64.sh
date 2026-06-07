@@ -40,17 +40,17 @@ echo " 2. Compiling Python BLE Beacon (PyInstaller)"
 echo "================================================="
 cd "$BEACON_DIR"
 
-pyinstaller \
-  --onefile \
-  --name ${BEACON_EXE%.*} \
-  --hidden-import=winrt.windows.foundation \
-  --hidden-import=winrt.windows.foundation.collections \
-  --hidden-import=winrt.windows.devices.bluetooth.advertisement \
-  --hidden-import=winrt.windows.storage.streams \
-  --hidden-import=psutil \
-  --console \
-  uxplay-beacon-windows.py \
-  --noconfirm
+#pyinstaller \
+#  --onefile \
+#  --name ${BEACON_EXE%.*} \
+#  --hidden-import=winrt.windows.foundation \
+#  --hidden-import=winrt.windows.foundation.collections \
+#  --hidden-import=winrt.windows.devices.bluetooth.advertisement \
+#  --hidden-import=winrt.windows.storage.streams \
+#  --hidden-import=psutil \
+#  --console \
+#  uxplay-beacon-windows.py \
+#  --noconfirm
 
 cd ../..
 
