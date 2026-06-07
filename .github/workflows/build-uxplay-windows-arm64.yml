@@ -109,7 +109,7 @@ jobs:
       
       - name: install python dependencies
         shell: powershell
-        run: pip install winrt-Windows.Foundation winrt-Windows.Foundation.Collections winrt-Windows.Devices.Bluetooth.Advertisement winrt-Windows.Storage.Streams psutil
+        run: pip install pyinstaller winrt-Windows.Foundation winrt-Windows.Foundation.Collections winrt-Windows.Devices.Bluetooth.Advertisement winrt-Windows.Storage.Streams psutil
 
       - name: create bluetooth beacon .exe with pyinstaller
         shell: powershell
