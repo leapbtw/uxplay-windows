@@ -3,7 +3,7 @@ name: build uxplay-windows-arm64
 on:
   push:
     branches:
-      - main
+      - arm64
   workflow_dispatch:
     inputs:
       tmate_debug_enabled:
