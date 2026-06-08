@@ -29,13 +29,16 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
+      # -------------------------
+      # mDNSResponder cache
+      # -------------------------
       - name: cache mDNSResponder build artifacts (Bonjour SDK)
         uses: actions/cache@v5
         id: mdns-cache
         with:
           path: |
             Bonjour SDK
-          key: mdns-${{ runner.os }}-${{ hashFiles('mdnsresponder-patches/2881.patch') }}-v3
+          key: mdns-${{ runner.os }}-2881-${{ hashFiles('mdnsresponder-patches/2881.patch') }}-v3
           restore-keys: |
             mdns-${{ runner.os }}-arm64-
 
@@ -52,12 +55,15 @@ jobs:
           cp -v ../mdnsresponder-patches/2881.patch .
           git apply -v 2881.patch
 
-          & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe' `
-            .\mDNSWindows\DLL\dnssd.vcxproj /m /t:Build `
+          # --- MSBuild via VSWHERE (FIXED) ---
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.Component.MSBuild `
+            -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+
+          & $msbuild .\mDNSWindows\DLL\dnssd.vcxproj /m /t:Build `
             /p:Configuration=Release /p:Platform=ARM64
 
-          & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe' `
-            .\mDNSWindows\SystemService\mDNSResponder.vcxproj /m /t:Build `
+          & $msbuild .\mDNSWindows\SystemService\mDNSResponder.vcxproj /m /t:Build `
             /p:Configuration=Release /p:Platform=ARM64
 
           New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Include' | Out-Null
@@ -73,38 +79,30 @@ jobs:
           cd ..
           Remove-Item -Recurse -Force mdns2881
 
+      # -------------------------
+      # MSYS2 setup
+      # -------------------------
+      - name: download+install msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          update: true
+
+      # -------------------------
+      # pacman cache
+      # -------------------------
       - name: cache msys2 pacman packages
         uses: actions/cache@v5
         with:
           path: |
             C:\msys64\var\cache\pacman\pkg
-            C:\msys64\var\lib\pacman\sync
           key: msys2-pacman-${{ runner.os }}-arm64-${{ hashFiles('clangarm64_dependencies.txt') }}-v2
           restore-keys: |
             msys2-pacman-${{ runner.os }}-arm64-
 
-      - name: download+install msys2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: CLANGARM64
-          update: false
-
-      - name: cache pip and python packages
-        uses: actions/cache@v5
-        with:
-          path: |
-            ${{ github.workspace }}/pip-cache
-            C:\msys64\clangarm64\lib\python*\site-packages\winrt*
-          key: pip-winrt-${{ runner.os }}-arm64-v2
-          restore-keys: |
-            pip-winrt-${{ runner.os }}-arm64-
-
       - name: install build dependencies
         shell: msys2 {0}
         run: |
-          export PIP_CACHE_DIR="${PWD}/pip-cache"
-          mkdir -p "$PIP_CACHE_DIR"
-
           pacman -S --needed --noconfirm - < clangarm64_dependencies.txt
       
       - name: install python dependencies
@@ -118,18 +116,21 @@ jobs:
           pyinstaller   --onefile   --name uxplay-bluetooth-beacon.exe   --hidden-import=winrt.windows.foundation   --hidden-import=winrt.windows.foundation.collections   --hidden-import=winrt.windows.devices.bluetooth.advertisement   --hidden-import=winrt.windows.storage.streams   --hidden-import=psutil   --console   uxplay-beacon-windows.py   --noconfirm
           cd ..\..
 
+      # -------------------------
+      # release build
+      # -------------------------
       - name: make release! (arm64)
         shell: msys2 {0}
         run: |
-          where windeployqt
-          windeployqt --version
+          echo "MSYSTEM=$MSYSTEM"
+          which windeployqt || true
+          windeployqt --version || true
           ./make_release_CI_arm64.sh
 
-      - name: where are we?
-        run: |
-          pwd
-          ls
 
+      # -------------------------
+      # WiX toolchain
+      # -------------------------
       - name: cache dotnet tools (wix)
         uses: actions/cache@v5
         with:
@@ -158,14 +159,17 @@ jobs:
             -out uxplaywindows-installer-arm64.msi `
             -ext WixToolset.UI.wixext
 
+      # -------------------------
+      # artifacts
+      # -------------------------
       - name: upload msi artifact
         uses: actions/upload-artifact@v5
         with:
-          name: uxplay-windows-arm64-msi
+          name: uxplay-msi-arm64
           path: uxplaywindows-installer-arm64.msi
 
-      - name: uploading artifact
+      - name: uploading release artifact
         uses: actions/upload-artifact@v5
         with:
-          name: uxplay-windows-arm64
+          name: uxplay-release-arm64
           path: release/**
