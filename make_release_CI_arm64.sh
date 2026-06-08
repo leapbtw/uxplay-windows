@@ -74,46 +74,35 @@ if [ ! -f "$DLL_LIST_FILE" ]; then
   exit 1
 fi
 
-CHANGELOG_FILE="$DIST_DIR/CHANGELOG.txt"
-mkdir -p "$DIST_DIR"
-: > "$CHANGELOG_FILE"
-
 copy_one_dll() {
-    local win_path="$1"
-    [ -z "$win_path" ] && return 0
+  local win_path="$1"
+  [ -z "$win_path" ] && return 0
 
-    local p="$win_path"
+  local unix_path="$win_path"
+  if [[ "$win_path" =~ ^[A-Za-z]:\\ ]]; then
+    unix_path="$(cygpath -u "$win_path")"
+  fi
 
-    [[ "$p" =~ ^[A-Za-z]:\\ ]] && p="$(cygpath -u "$p")"
-    [[ ! "$p" =~ \.dll$ ]] && return 0
+  case "$unix_path" in
+    *.dll|*.DLL) ;;
+    *) return 0 ;;
+  esac
 
-    if [ ! -f "$p" ]; then
-        dir="$(dirname "$p")"
-        base="$(basename "$p")"
+  [ -f "$unix_path" ] || return 0
 
-        if [[ "$base" =~ ^(.*)-[0-9]+\.dll$ ]]; then
-            prefix="${BASH_REMATCH[1]}"
-            cand=$(find "$dir" -maxdepth 1 -iname "${prefix}-*.dll" | sort -V | tail -n1)
+  local dest=""
+  if [[ "$unix_path" == *"/lib/gstreamer-1.0/"* ]]; then
+    dest="$DIST_DIR/lib/gstreamer-1.0/$(basename "$unix_path")"
+    mkdir -p "$DIST_DIR/lib/gstreamer-1.0"
+  else
+    dest="$DIST_DIR/$(basename "$unix_path")"
+  fi
 
-            if [ -n "$cand" ]; then
-                echo "BUMP: $base -> $(basename "$cand")"
-                echo "$(date '+%F %T') $base -> $(basename "$cand")" >> "$CHANGELOG_FILE"
-                p="$cand"
-            else
-                echo "MISSING: $base"
-                return 1
-            fi
-        else
-            echo "MISSING: $base"
-            return 1
-        fi
-    fi
+  if [ -f "$dest" ]; then
+    return 0
+  fi
 
-    dest="$DIST_DIR/$(basename "$p")"
-    [[ -f "$dest" ]] && return 0
-
-    cp "$p" "$dest"
-    echo "OK: $(basename "$p")"
+  cp "$unix_path" "$dest"
 }
 
 while IFS= read -r dll_path; do
