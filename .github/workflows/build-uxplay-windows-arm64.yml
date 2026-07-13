@@ -3,7 +3,7 @@ name: build uxplay-windows-arm64
 on:
   push:
     branches:
-      - main
+      - arm64
   workflow_dispatch:
     inputs:
       tmate_debug_enabled:
@@ -26,6 +26,7 @@ jobs:
       - name: clone the repo
         uses: actions/checkout@v5
         with:
+          ref: arm64
           submodules: recursive
           fetch-depth: 1
 
