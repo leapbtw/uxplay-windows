@@ -54,10 +54,15 @@ jobs:
           cp -v ../mdnsresponder-patches/2881.patch .
           git apply -v 2881.patch
 
-          & 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe' `
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.Component.MSBuild `
+            -find MSBuild\Current\Bin\MSBuild.exe
+          if (-not $msbuild) { throw "MSBuild.exe not found" }
+
+          & $msbuild `
             .\mDNSWindows\DLL\dnssd.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
 
-          & 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe' `
+          & $msbuild `
             .\mDNSWindows\SystemService\mDNSResponder.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
 
           New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Include' | Out-Null
