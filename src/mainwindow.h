@@ -5,11 +5,13 @@
 #include <QLabel>
 #include <QMainWindow>
 #include <QComboBox>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QSystemTrayIcon>
 #include <QProcess>
 #include <QCheckBox>
 #include <QMessageBox>
+#include <QTimer>
 
 class QMenu;
 class QAction;
@@ -24,6 +26,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 
 private slots:
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
@@ -38,6 +41,8 @@ private slots:
     void toggleBle(bool checked); // bluetooth
     void toggleForceFullscreen(bool checked);
     void onRendererChanged(int index);
+    void applyDisplayName();
+    void restartApplicationAfterWake();
 
 
 private:
@@ -48,11 +53,14 @@ private:
     void updateStatus();
     void startBluetoothBeacon(const QString &path);
     void stopBluetoothBeacon();
+    QString displayNameFromSettingsOrArgs() const;
+    void applyDisplayNameArg(QStringList &args) const;
+    void scheduleWakeRestart();
     void applyRendererAndFullscreenArgs(QStringList &args);
 
     QProcess *m_beacon = nullptr;
 
-    QStringList getArgumentsFromFile();
+    QStringList getArgumentsFromFile() const;
     void ensureSettingsFileExists();
     bool ensureBonjourServiceInstalled();
     bool isWindowsServicePresent(const std::wstring &serviceName) const;
@@ -63,6 +71,7 @@ private:
 
     QCheckBox *m_bleCheckbox = nullptr;
     QCheckBox *m_fullscreenCheckbox = nullptr;
+    QLineEdit *m_displayNameEdit = nullptr;
     QComboBox *m_rendererCombo = nullptr;
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_trayMenu = nullptr;
@@ -74,6 +83,7 @@ private:
     QPushButton *m_listargsBtn = nullptr;
     QPushButton *m_licenseBtn = nullptr;
     QLabel *m_statusLabel = nullptr;
+    QTimer *m_wakeRestartTimer = nullptr;
 
     AirPlayWorker *m_worker = nullptr;
 
