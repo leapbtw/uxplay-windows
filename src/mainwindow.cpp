@@ -11,10 +11,12 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QProcessEnvironment>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStyle>
@@ -71,31 +73,63 @@ MainWindow::~MainWindow() {
     stopServer();
 }
 
-void MainWindow::ensureSettingsFileExists() {
+QString MainWindow::userArgumentsPath() const {
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir dir(appDataPath);
-    if (!dir.exists()) {
-        dir.mkpath(".");
+    return appDataPath + "/arguments.txt";
+}
+
+QString MainWindow::machineArgumentsPath() const {
+    QString programDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    return programDataPath + "/uxplay-windows/arguments.txt";
+}
+
+QString MainWindow::activeArgumentsPath() const {
+    QString userPath = userArgumentsPath();
+    if (QFile::exists(userPath)) {
+        return userPath;
     }
 
-    QString filePath = appDataPath + "/arguments.txt";
-    QFile file(filePath);
-    if (!file.exists()) {
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream out(&file);
-            out << "-n uxplay-windows -nh";
-            file.close();
-        }
+    QString machinePath = machineArgumentsPath();
+    if (QFile::exists(machinePath)) {
+        return machinePath;
+    }
+
+    return userPath;
+}
+
+QString MainWindow::expandEnvironmentVariables(const QString &content) const {
+    QString expanded = content;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    for (const QString &key : env.keys()) {
+        expanded.replace("%" + key + "%", env.value(key), Qt::CaseInsensitive);
+    }
+
+    return expanded;
+}
+
+void MainWindow::ensureSettingsFileExists() {
+    if (QFile::exists(userArgumentsPath()) || QFile::exists(machineArgumentsPath())) {
+        return;
+    }
+
+    QFileInfo info(userArgumentsPath());
+    QDir().mkpath(info.absolutePath());
+
+    QFile file(userArgumentsPath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << "-n uxplay-windows -nh";
+        file.close();
     }
 }
 
 QStringList MainWindow::getArgumentsFromFile() {
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QFile file(appDataPath + "/arguments.txt");
+    QFile file(activeArgumentsPath());
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QString content = QTextStream(&file).readAll().trimmed();
+        QString content = expandEnvironmentVariables(QTextStream(&file).readAll().trimmed());
         file.close();
-        return content.split(" ", Qt::SkipEmptyParts);
+        return QProcess::splitCommand(content);
     }
     return QStringList() << "-n" << "uxplay-windows" << "-nh";
 }
@@ -169,8 +203,7 @@ void MainWindow::setupUI() {
 }
 
 void MainWindow::openSettingsFile() {
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QString filePath = appDataPath + "/arguments.txt";
+    QString filePath = activeArgumentsPath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
     
     m_tray->showMessage("Settings", "Restart the app to apply new arguments.", 

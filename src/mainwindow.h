@@ -54,6 +54,10 @@ private:
 
     QStringList getArgumentsFromFile();
     void ensureSettingsFileExists();
+    QString userArgumentsPath() const;
+    QString machineArgumentsPath() const;
+    QString activeArgumentsPath() const;
+    QString expandEnvironmentVariables(const QString &content) const;
     bool ensureBonjourServiceInstalled();
     bool isWindowsServicePresent(const std::wstring &serviceName) const;
     void restartApplication();
