@@ -1,0 +1,60 @@
+name: build Bonjour SDK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build Bonjour SDK x64
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: clone the repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: build mDNSResponder
+        shell: powershell
+        run: |
+          git clone --branch rel/mDNSResponder-2881 --depth 1 `
+            --single-branch `
+            https://github.com/apple-oss-distributions/mDNSResponder.git `
+            mdns2881
+
+          cd mdns2881
+          cp -v ../mdnsresponder-patches/2881.patch .
+          git apply -v 2881.patch
+
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.Component.MSBuild `
+            -find MSBuild\Current\Bin\MSBuild.exe
+          if (-not $msbuild) { throw "MSBuild.exe not found" }
+
+          & $msbuild `
+            .\mDNSWindows\DLL\dnssd.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
+
+          & $msbuild `
+            .\mDNSWindows\SystemService\mDNSResponder.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
+
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Include' | Out-Null
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Lib\x64' | Out-Null
+          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Bin\x64' | Out-Null
+
+          cp mDNSWindows\DLL\x64\Release\dnssd.dll                    "..\Bonjour SDK\Bin\x64\dnssd.dll"
+          cp mDNSWindows\SystemService\x64\Release\mDNSResponder.exe  "..\Bonjour SDK\Bin\x64\mDNSResponder.exe"
+          cp mDNSShared\dns_sd.h                                      "..\Bonjour SDK\Include\dns_sd.h"
+          cp mDNSWindows\DLL\x64\Release\dnssd.lib                    "..\Bonjour SDK\Lib\x64\dnssd.lib"
+
+      - name: zip Bonjour SDK
+        shell: powershell
+        run: |
+          Compress-Archive -Path "Bonjour SDK" -DestinationPath "Bonjour-SDK-x64.zip" -Force
+
+      - name: upload Bonjour SDK zip
+        uses: actions/upload-artifact@v5
+        with:
+          name: Bonjour-SDK-x64
+          path: Bonjour-SDK-x64.zip
