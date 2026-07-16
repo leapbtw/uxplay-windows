@@ -225,11 +225,15 @@ void MainWindow::setupTray() {
         trayIcon = QApplication::style()->standardIcon(QStyle::SP_MediaPlay);
     }
     m_tray->setIcon(trayIcon);
-    m_tray->setToolTip("uxplay-windows");
+    m_tray->setToolTip("uxplay-windows - Stopped");
 
     m_trayMenu = new QMenu(this);
-    m_trayMenu->addAction("Quit", this, &MainWindow::quit);
+    m_statusAction = m_trayMenu->addAction("Status: Stopped");
+    m_statusAction->setEnabled(false);
+    m_trayMenu->addSeparator();
+    m_trayMenu->addAction("View Logs", this, &MainWindow::viewLogs);
     m_trayMenu->addAction("Restart", this, &MainWindow::restartApplication);
+    m_trayMenu->addAction("Quit", this, &MainWindow::quit);
 
     m_tray->setContextMenu(m_trayMenu);
     
@@ -498,6 +502,12 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 void MainWindow::updateStatus() {
     QString status = m_running ? "UxPlay server running" : "UxPlay server stopped";
     m_statusLabel->setText(status);
+    if (m_statusAction) {
+        m_statusAction->setText("Status: " + (m_running ? QString("Running") : QString("Stopped")));
+    }
+    if (m_tray) {
+        m_tray->setToolTip("uxplay-windows - " + (m_running ? QString("Running") : QString("Stopped")));
+    }
     m_autostartBtn->setText(isAutostartEnabled() ? "Open uxplay-windows on login: ON " : "Open uxplay-windows on login: OFF");
 }
 
@@ -582,4 +592,9 @@ void MainWindow::restartApplication() {
 
     // close GUI of current process after a short delay
     QTimer::singleShot(200, qApp, &QCoreApplication::quit);
+}
+
+void MainWindow::viewLogs() {
+    QString logPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uxplay.log";
+    QDesktopServices::openUrl(QUrl::fromLocalFile(logPath));
 }

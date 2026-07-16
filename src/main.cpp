@@ -5,11 +5,44 @@
 #include <QDir>
 #include <QProcessEnvironment>
 #include <QIcon>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+#include <QStandardPaths>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <cstdio>
 #endif
+
+void customMessageHandler(QtMsgType type, const QMessageLogContext &/*context*/, const QString &msg) {
+    QString txt;
+    switch (type) {
+    case QtDebugMsg:
+        txt = QString("Debug: %1").arg(msg);
+        break;
+    case QtInfoMsg:
+        txt = QString("Info: %1").arg(msg);
+        break;
+    case QtWarningMsg:
+        txt = QString("Warning: %1").arg(msg);
+        break;
+    case QtCriticalMsg:
+        txt = QString("Critical: %1").arg(msg);
+        break;
+    case QtFatalMsg:
+        txt = QString("Fatal: %1").arg(msg);
+        break;
+    }
+    QString logPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uxplay.log";
+    QFile outFile(logPath);
+    if (outFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream ts(&outFile);
+        ts << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ") << txt << Qt::endl;
+        outFile.close();
+    }
+    fprintf(stderr, "%s\n", msg.toLocal8Bit().constData());
+}
 
 int main(int argc, char *argv[]) {
 #ifdef _WIN32
@@ -25,6 +58,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     QApplication app(argc, argv);
+    qInstallMessageHandler(customMessageHandler);
     app.setOrganizationName("leapbtw");
     app.setApplicationName("uxplay-windows");
     app.setWindowIcon(QIcon(QApplication::applicationDirPath() + "/resources/icon.ico"));
