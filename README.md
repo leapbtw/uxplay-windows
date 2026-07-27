@@ -86,13 +86,25 @@ commands.
 
 </details>
 
-## TODO
+<details>
+<summary><strong>TODO</strong></summary>
+
+<br>
+
 - make an update checker
 
-## Known Issues
+</details>
+
+<details>
+<summary><strong>Known Issues</strong></summary>
+
+<br>
+
 ~~uxplay bugs out when waking PC from Sleep~~
 ~~you can fix this by killing uxplay-windows.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.~~  \
 Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
+
+</details>
 
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.

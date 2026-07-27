@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDesktopServices>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -120,12 +121,28 @@ void MainWindow::ensureSettingsFileExists() {
 }
 
 QStringList MainWindow::getArgumentsFromFile() {
-    QFile file(activeArgumentsPath());
+    const QString userPath = userArgumentsPath();
+    const QString machinePath = machineArgumentsPath();
+    const QString selectedPath = activeArgumentsPath();
+
+    qInfo().noquote() << "[arguments] Machine file:"
+                      << QDir::toNativeSeparators(machinePath)
+                      << (QFile::exists(machinePath) ? "(found)" : "(not found)");
+    qInfo().noquote() << "[arguments] User file:"
+                      << QDir::toNativeSeparators(userPath)
+                      << (QFile::exists(userPath) ? "(found)" : "(not found)");
+    qInfo().noquote() << "[arguments] Reading:"
+                      << QDir::toNativeSeparators(selectedPath);
+
+    QFile file(selectedPath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QString content = expandEnvironmentVariables(QTextStream(&file).readAll().trimmed());
         file.close();
         return QProcess::splitCommand(content);
     }
+
+    qWarning().noquote()
+        << "[arguments] Unable to read the selected file; using built-in defaults.";
     return QStringList() << "-n" << "uxplay-windows" << "-nh";
 }
 
