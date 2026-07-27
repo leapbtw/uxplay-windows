@@ -44,6 +44,37 @@ You can also set it to run automatically when your PC starts
 > Please see [BUILDING.md](./docs/BUILDING.md)
 <br>
 
+## Advanced configuration
+
+UxPlay arguments are read from `arguments.txt`.
+
+Configuration precedence:
+
+1. `%APPDATA%\leapbtw\uxplay-windows\arguments.txt`
+2. `%ProgramData%\uxplay-windows\arguments.txt`
+3. built-in default: `-n uxplay-windows -nh`
+
+The per-user file takes precedence when it exists. Administrators can deploy a
+shared machine-wide configuration to `%ProgramData%\uxplay-windows\arguments.txt`.
+
+Environment variables are expanded when the app starts. For example:
+
+```text
+-n %COMPUTERNAME% -nh
+```
+
+## Local x64 development
+
+After installing MSYS2, the complete local build is one PowerShell command:
+
+```powershell
+.\build.ps1 package
+```
+
+It produces a verified portable ZIP and MSI under `out\x64\artifacts`. See the
+[developer guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional
+commands.
+
 ## TODO
 - make an update checker
 
