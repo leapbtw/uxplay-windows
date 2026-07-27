@@ -27,7 +27,12 @@ if (-not $Force -and ($required | Where-Object { -not (Test-Path $_) }).Count -e
     return
 }
 
-$msbuild = (Get-Command msbuild.exe -ErrorAction SilentlyContinue).Source
+$msbuildCommand = Get-Command msbuild.exe -ErrorAction SilentlyContinue
+$msbuild = if ($msbuildCommand) {
+    $msbuildCommand.Source
+} else {
+    $null
+}
 $vswhere = Join-Path ${env:ProgramFiles(x86)} `
     "Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not $msbuild -and (Test-Path -LiteralPath $vswhere)) {
