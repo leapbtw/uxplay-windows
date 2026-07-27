@@ -1,0 +1,5 @@
+pyinstaller==6.19.0
+winrt-Windows.Foundation==3.2.1
+winrt-Windows.Foundation.Collections==3.2.1
+winrt-Windows.Devices.Bluetooth.Advertisement==3.2.1
+winrt-Windows.Storage.Streams==3.2.1

@@ -12,7 +12,8 @@
     Language="1033"
     Scope="perMachine">
 
-    <MajorUpgrade AllowDowngrades="yes" />
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of uxplay-windows is already installed." />
     <WixVariable Id="WixUILicenseRtf" Value="./docs/LICENSE.rtf" />
     <MediaTemplate EmbedCab="yes" />
 
@@ -25,6 +26,7 @@
     <Feature Id="MainFeature" Title="uxplay-windows" Level="1">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentGroupRef Id="AppExe" />
+      <ComponentRef Id="ProgramMenuShortcutComponent" />
     </Feature>
 
     <Feature
@@ -37,7 +39,7 @@
 
     <ComponentGroup Id="AppFiles" Directory="INSTALLDIR">
       <Files Include="./release/**">
-        <Exclude Files="**/*.pdb;**/uxplay-windows.exe" />
+        <Exclude Files="./release/uxplay-windows.exe;**/*.pdb;**/uxplay-windows.exe" />
       </Files>
     </ComponentGroup>
 
@@ -46,17 +48,30 @@
                  Guid="e5f23b9b-b726-4738-85ba-63892cff1924">
         <File Id="AppExeFile"
               Source="./release/uxplay-windows.exe"
-              KeyPath="yes">
-          <Shortcut
-            Name="uxplay-windows"
-            Directory="ProgramMenuFolder"
-            WorkingDirectory="INSTALLDIR"
-            Advertise="no" />
-        </File>
+              KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
     <StandardDirectory Id="DesktopFolder" />
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Component Id="ProgramMenuShortcutComponent"
+               Guid="cd347554-b38e-47f5-801d-152447366101"
+               Directory="ProgramMenuFolder">
+      <RegistryValue
+        Root="HKCU"
+        Key="Software\leapbtw\uxplay-windows"
+        Name="ProgramMenuShortcut"
+        Type="integer"
+        Value="1"
+        KeyPath="yes" />
+      <Shortcut
+        Name="uxplay-windows"
+        Directory="ProgramMenuFolder"
+        Target="[INSTALLDIR]uxplay-windows.exe"
+        WorkingDirectory="INSTALLDIR"
+        Advertise="no" />
+    </Component>
 
     <Component Id="DesktopShortcutComponent"
                Guid="63bb69df-4292-4053-848c-fb369bed6273"
