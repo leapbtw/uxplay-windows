@@ -80,7 +80,11 @@ QString MainWindow::userArgumentsPath() const {
 }
 
 QString MainWindow::machineArgumentsPath() const {
-    QString programDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QString programDataPath =
+        QProcessEnvironment::systemEnvironment().value("ProgramData");
+    if (programDataPath.isEmpty()) {
+        programDataPath = "C:/ProgramData";
+    }
     return programDataPath + "/uxplay-windows/arguments.txt";
 }
 
