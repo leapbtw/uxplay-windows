@@ -3,11 +3,10 @@ name: build uxplay-windows x64
 on:
   push:
     branches:
-      - main
-      - new-build-system-x64
+      - x64
   pull_request:
     branches:
-      - main
+      - x64
   workflow_dispatch:
 
 concurrency:

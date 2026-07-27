@@ -31,7 +31,7 @@ You can also set it to run automatically when your PC starts
 > [!IMPORTANT]
 > *Why is Windows Defender complaining during installation?*
 > 
-> ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/main/stuff/defender.png "defender")
+> ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/x64/stuff/defender.png "defender")
 >
 > Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.
 >
