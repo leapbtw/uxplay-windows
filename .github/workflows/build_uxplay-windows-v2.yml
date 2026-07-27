@@ -49,6 +49,14 @@ jobs:
           update: true
           cache: true
 
+      - name: set up native Windows Python for WinRT
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          architecture: x64
+          cache: pip
+          cache-dependency-path: packaging/python-requirements-x64.txt
+
       - name: set up .NET SDK for WiX
         uses: actions/setup-dotnet@v5
         with:

@@ -14,6 +14,7 @@ the isolated runtime self-test, and creates the portable ZIP and MSI.
 
 - Windows 10 or Windows 11
 - [MSYS2](https://www.msys2.org/) installed in `C:\msys64`
+- Native CPython 3.14 x64 for the WinRT Bluetooth beacon
 - .NET 8 SDK for the WiX MSI (not needed with `-SkipInstaller`)
 - Visual Studio Build Tools with the C++ workload only when the local
   `Bonjour SDK` cache does not exist
@@ -22,6 +23,12 @@ If MSYS2 is installed elsewhere, pass its path:
 
 ```powershell
 .\build.ps1 package -MsysRoot D:\msys64
+```
+
+If native Python is not on `PATH`, select it explicitly:
+
+```powershell
+.\build.ps1 package -BeaconPython C:\Python314\python.exe
 ```
 
 ## Commands
@@ -67,6 +74,10 @@ Bonjour SDK         generated/cached Bonjour x64 SDK
 `packaging/gstreamer-features-x64.txt` contains stable GStreamer element names,
 not DLL filenames. During every build, the installed GStreamer registry maps
 those names to the current plugin DLLs.
+
+The Bluetooth beacon is packaged with native Windows CPython so pip can use
+the official prebuilt WinRT wheels. MSYS2 Python remains dedicated to the
+GStreamer registry, where its PyGObject bindings are required.
 
 After Qt and GStreamer plugins are staged, the dependency collector recursively
 reads every PE import with `objdump` and copies the matching runtime DLL from

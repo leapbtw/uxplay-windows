@@ -8,6 +8,8 @@ param(
 
     [string]$MsysRoot = $(if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { "C:\msys64" }),
 
+    [string]$BeaconPython = $env:BEACON_PYTHON,
+
     [switch]$SkipBootstrap,
 
     [switch]$SkipInstaller
@@ -86,7 +88,80 @@ function Set-BuildEnvironment {
     $env:BONJOUR_SDK = $bonjourSdk
 }
 
+function Get-BeaconPython {
+    $candidates = @()
+    if ($BeaconPython) {
+        $candidates += $BeaconPython
+    }
+    if ($env:pythonLocation) {
+        $candidates += (Join-Path $env:pythonLocation "python.exe")
+    }
+
+    $windowsPython = Get-Command python.exe -All -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Source -and
+            -not $_.Source.StartsWith(
+                $MsysRoot,
+                [StringComparison]::OrdinalIgnoreCase
+            )
+        } |
+        Select-Object -First 1
+    if ($windowsPython) {
+        $candidates += $windowsPython.Source
+    }
+
+    # Preserve compatibility with existing local MSYS2 setups. CI always
+    # provides native Windows CPython through actions/setup-python.
+    $candidates += (Join-Path $runtimeBin "python.exe")
+
+    $selected = $candidates |
+        Where-Object { $_ -and (Test-Path -LiteralPath $_) } |
+        Select-Object -First 1
+    if (-not $selected) {
+        throw (
+            "Python for the Bluetooth beacon was not found. Install CPython " +
+            "3.14 x64 or pass -BeaconPython C:\path\to\python.exe."
+        )
+    }
+    return (Resolve-Path -LiteralPath $selected).Path
+}
+
+function Test-MsysPython {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Python
+    )
+
+    return $Python.StartsWith(
+        $MsysRoot,
+        [StringComparison]::OrdinalIgnoreCase
+    )
+}
+
+function Assert-BeaconPythonPackages {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Python
+    )
+
+    & $Python -c (
+        "import PyInstaller;" +
+        "import psutil;" +
+        "import winrt.windows.foundation;" +
+        "import winrt.windows.foundation.collections;" +
+        "import winrt.windows.devices.bluetooth.advertisement;" +
+        "import winrt.windows.storage.streams"
+    )
+    if ($LASTEXITCODE -ne 0) {
+        throw (
+            "Required beacon packages are missing from $Python. " +
+            "Run .\build.ps1 bootstrap first."
+        )
+    }
+}
+
 function Install-Dependencies {
+    $beaconPython = Get-BeaconPython
     Set-BuildEnvironment
     $pacman = Join-Path $MsysRoot "usr\bin\pacman.exe"
     $packageList = Join-Path $projectRoot "ucrt_x64_dependencies.txt"
@@ -99,19 +174,28 @@ function Install-Dependencies {
         -FilePath $pacman `
         -Arguments (@("--noconfirm", "-S", "--needed") + $packages)
 
-    $python = Join-Path $runtimeBin "python.exe"
-    Write-Host "Installing/verifying required Python packages..."
+    Write-Host "Installing/verifying beacon packages with $beaconPython..."
+    $pipArguments = @(
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check"
+    )
+    if (Test-MsysPython -Python $beaconPython) {
+        $pipArguments += "--break-system-packages"
+    } else {
+        # Native Windows CPython can consume the published WinRT wheels.
+        # Do not fall back to the fragile MinGW source build in CI.
+        $pipArguments += "--only-binary=:all:"
+    }
+    $pipArguments += @(
+        "--requirement",
+        (Join-Path $projectRoot "packaging\python-requirements-x64.txt")
+    )
     Invoke-Native `
-        -FilePath $python `
-        -Arguments @(
-            "-m",
-            "pip",
-            "install",
-            "--disable-pip-version-check",
-            "--break-system-packages",
-            "--requirement",
-            (Join-Path $projectRoot "packaging\python-requirements-x64.txt")
-        )
+        -FilePath $beaconPython `
+        -Arguments $pipArguments
+    Assert-BeaconPythonPackages -Python $beaconPython
 }
 
 function Ensure-BonjourSdk {
@@ -129,8 +213,10 @@ function Ensure-BonjourSdk {
 }
 
 function Build-Application {
+    $beaconPython = Get-BeaconPython
     Set-BuildEnvironment
     Assert-BuildTools
+    Assert-BeaconPythonPackages -Python $beaconPython
     Ensure-BonjourSdk
     New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 
@@ -150,7 +236,6 @@ function Build-Application {
         -FilePath $cmake `
         -Arguments @("--build", $buildDir, "--parallel")
 
-    $python = Join-Path $runtimeBin "python.exe"
     $beaconSource = Join-Path $projectRoot "libuxplay\Bluetooth_LE_beacon"
     $beaconDist = Join-Path $beaconOutDir "dist"
     $beaconWork = Join-Path $beaconOutDir "work"
@@ -160,7 +245,7 @@ function Build-Application {
     New-Item -ItemType Directory -Force -Path $beaconSpec | Out-Null
 
     Invoke-Native `
-        -FilePath $python `
+        -FilePath $beaconPython `
         -WorkingDirectory $beaconSource `
         -Arguments @(
             "-m", "PyInstaller",
@@ -201,6 +286,7 @@ function Write-BuildManifest {
     $pacman = Join-Path $MsysRoot "usr\bin\pacman.exe"
     $cmake = Join-Path $runtimeBin "cmake.exe"
     $python = Join-Path $runtimeBin "python.exe"
+    $beaconPython = Get-BeaconPython
     $gstInspect = Join-Path $runtimeBin "gst-inspect-1.0.exe"
     $qmake = Join-Path $runtimeBin "qmake6.exe"
 
@@ -220,7 +306,8 @@ function Write-BuildManifest {
         # scripts whose Unix utilities might not be on PATH in PowerShell.
         libuxplayCommit = (& git -C $projectRoot rev-parse HEAD:libuxplay).Trim()
         cmake = (& $cmake --version | Select-Object -First 1)
-        python = (& $python --version 2>&1)
+        msys2Python = (& $python --version 2>&1)
+        beaconPython = (& $beaconPython --version 2>&1)
         gstreamer = (& $gstInspect --version | Select-Object -Last 1)
         qt = $(if (Test-Path -LiteralPath $qmake) {
             (& $qmake -query QT_VERSION)
