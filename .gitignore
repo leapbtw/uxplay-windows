@@ -1,5 +1,8 @@
 build/*
+out/
+.wix/
 release/
 .idea/
 Bonjour SDK/
 dnssd.dll
+__pycache__/

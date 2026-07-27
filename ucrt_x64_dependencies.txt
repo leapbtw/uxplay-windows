@@ -1,5 +1,6 @@
 mingw-w64-ucrt-x86_64-cmake
 mingw-w64-ucrt-x86_64-gcc
+mingw-w64-ucrt-x86_64-binutils
 mingw-w64-ucrt-x86_64-libplist
 mingw-w64-ucrt-x86_64-json-glib
 mingw-w64-ucrt-x86_64-gstreamer
@@ -14,5 +15,3 @@ mingw-w64-ucrt-x86_64-python
 mingw-w64-ucrt-x86_64-python-gobject
 mingw-w64-ucrt-x86_64-python-psutil
 mingw-w64-ucrt-x86_64-python-pip
-
-mingw-w64-ucrt-x86_64-pyinstaller

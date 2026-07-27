@@ -1,166 +1,88 @@
-name: build uxplay-windows
+name: build uxplay-windows x64
 
 on:
   push:
     branches:
       - main
+      - new-build-system-x64
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      tmate_debug_enabled:
-        description: 'Run the build with tmate debugging enabled'
-        default: false
-        required: false
-        type: boolean
+
+concurrency:
+  group: x64-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    name: build uxplay
-    runs-on: windows-latest
+    name: build, bundle and test x64
+    runs-on: windows-2022
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
     permissions:
-      contents: write
+      contents: read
 
     steps:
-      - name: clone the repo
+      - name: preserve shell script line endings
+        shell: powershell
+        run: git config --global core.autocrlf input
+
+      - name: check out repository
         uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 1
 
-      - name: cache mDNSResponder build artifacts (Bonjour SDK)
-        uses: actions/cache@v5
-        id: mdns-cache
-        with:
-          path: |
-            Bonjour SDK
-          key: mdns-${{ runner.os }}-${{ hashFiles('mdnsresponder-patches/2881.patch') }}-v3
-          restore-keys: |
-            mdns-${{ runner.os }}-
-
-      - name: mDNSResponder compilation
-        if: steps.mdns-cache.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          git clone --branch rel/mDNSResponder-2881 --depth 1 `
-            --single-branch `
-            https://github.com/apple-oss-distributions/mDNSResponder.git `
-            mdns2881
-
-          cd mdns2881
-          cp -v ../mdnsresponder-patches/2881.patch .
-          git apply -v 2881.patch
-
-          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
-            -latest -products * -requires Microsoft.Component.MSBuild `
-            -find MSBuild\Current\Bin\MSBuild.exe
-          if (-not $msbuild) { throw "MSBuild.exe not found" }
-
-          & $msbuild `
-            .\mDNSWindows\DLL\dnssd.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
-
-          & $msbuild `
-            .\mDNSWindows\SystemService\mDNSResponder.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
-
-          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Include' | Out-Null
-          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Lib\x64' | Out-Null
-          New-Item -ItemType Directory -Force -Path '..\Bonjour SDK\Bin\x64' | Out-Null
-
-          cp mDNSWindows\DLL\x64\Release\dnssd.dll                    "..\Bonjour SDK\Bin\x64\dnssd.dll"
-          cp mDNSWindows\SystemService\x64\Release\mDNSResponder.exe  "..\Bonjour SDK\Bin\x64\mDNSResponder.exe"
-          cp mDNSShared\dns_sd.h                                      "..\Bonjour SDK\Include\dns_sd.h"
-          cp mDNSWindows\DLL\x64\Release\dnssd.lib                    "..\Bonjour SDK\Lib\x64\dnssd.lib"
-
-          cd ..
-          Remove-Item -Recurse -Force mdns2881
-
-      - name: cache msys2 pacman packages
+      - name: restore Bonjour SDK cache
         uses: actions/cache@v5
         with:
-          path: |
-            C:\msys64\var\cache\pacman\pkg
-            C:\msys64\var\lib\pacman\sync
-          key: msys2-pacman-${{ runner.os }}-${{ hashFiles('ucrt_x64_dependencies.txt') }}-v2
-          restore-keys: |
-            msys2-pacman-${{ runner.os }}-
+          path: Bonjour SDK
+          key: bonjour-x64-2881-${{ hashFiles('mdnsresponder-patches/2881.patch', 'scripts/build-bonjour-x64.ps1') }}-v1
 
-      - name: download+install msys2
+      - name: set up MSYS2 UCRT64
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          update: false
+          update: true
+          cache: true
 
-      - name: cache pip and python packages
+      - name: set up native Windows Python for WinRT
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          architecture: x64
+          cache: pip
+          cache-dependency-path: packaging/python-requirements-x64.txt
+
+      - name: set up .NET SDK for WiX
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: restore Pacman package archives
         uses: actions/cache@v5
         with:
-          path: |
-            ${{ github.workspace }}/pip-cache
-            C:\msys64\ucrt64\lib\python*\site-packages\winrt*
-          key: pip-winrt-${{ runner.os }}-v2
+          path: C:\msys64\var\cache\pacman\pkg
+          key: pacman-ucrt64-${{ runner.os }}-${{ hashFiles('ucrt_x64_dependencies.txt') }}-v1
           restore-keys: |
-            pip-winrt-${{ runner.os }}-
+            pacman-ucrt64-${{ runner.os }}-
 
-      - name: install build dependencies
-        shell: msys2 {0}
-        run: |
-          export PIP_CACHE_DIR="${PWD}/pip-cache"
-          mkdir -p "$PIP_CACHE_DIR"
-
-          pacman -S --needed --noconfirm - < ucrt_x64_dependencies.txt
-
-          if ! python -c "import winrt.windows.foundation" 2>/dev/null; then
-            pip install \
-              winrt-Windows.Foundation \
-              winrt-Windows.Foundation.Collections \
-              winrt-Windows.Devices.Bluetooth.Advertisement \
-              winrt-Windows.Storage.Streams \
-              --break-system-packages
-          fi
-
-      - name: make release!
-        shell: msys2 {0}
-        run: |
-          where windeployqt
-          windeployqt --version
-          ./make_release_CI.sh
-
-      - name: where are we?
-        run: pwd; ls
-
-      - name: cache dotnet tools (wix)
+      - name: restore WiX NuGet cache
         uses: actions/cache@v5
         with:
-          path: |
-            C:\Users\runneradmin\.dotnet\tools
-            C:\Users\runneradmin\.nuget\packages
-          key: dotnet-tools-${{ runner.os }}-wix-v1
-          restore-keys: |
-            dotnet-tools-${{ runner.os }}-
+          path: out/x64/nuget-packages
+          key: wix-${{ runner.os }}-${{ hashFiles('.config/dotnet-tools.json', 'NuGet.config') }}-v4
 
-      - name: install wix toolset
+      - name: build, bundle and verify
         shell: powershell
-        run: |
-          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
-          if (-not (Get-Command wix -ErrorAction SilentlyContinue)) { dotnet tool install --global wix }
+        run: .\build.ps1 package
 
-      - name: build msi installer
-        shell: powershell
-        run: |
-          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
-
-          wix extension add WixToolset.UI.wixext -acceptEula wix7
-
-          wix build -acceptEula wix7 product.wxs `
-            -arch x64 `
-            -out uxplaywindows-installer.msi `
-            -ext WixToolset.UI.wixext
-
-      - name: upload msi artifact
+      - name: upload x64 artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: uxplay-windows-msi
-          path: uxplaywindows-installer.msi
-
-      - name: uploading artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: uxplay-windows
-          path: release/**
+          name: uxplay-windows-x64
+          path: out/x64/artifacts/*
+          if-no-files-found: error
