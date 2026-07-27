@@ -84,17 +84,12 @@ QString MainWindow::machineArgumentsPath() const {
 }
 
 QString MainWindow::activeArgumentsPath() const {
-    QString userPath = userArgumentsPath();
-    if (QFile::exists(userPath)) {
-        return userPath;
-    }
-
     QString machinePath = machineArgumentsPath();
     if (QFile::exists(machinePath)) {
         return machinePath;
     }
 
-    return userPath;
+    return userArgumentsPath();
 }
 
 QString MainWindow::expandEnvironmentVariables(const QString &content) const {

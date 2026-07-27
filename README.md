@@ -44,18 +44,22 @@ You can also set it to run automatically when your PC starts
 > Please see [BUILDING.md](./docs/BUILDING.md)
 <br>
 
-## Advanced configuration
+<details>
+<summary><strong>Advanced configuration</strong></summary>
+
+<br>
 
 UxPlay arguments are read from `arguments.txt`.
 
 Configuration precedence:
 
-1. `%APPDATA%\leapbtw\uxplay-windows\arguments.txt`
-2. `%ProgramData%\uxplay-windows\arguments.txt`
+1. `%ProgramData%\uxplay-windows\arguments.txt`
+2. `%APPDATA%\leapbtw\uxplay-windows\arguments.txt`
 3. built-in default: `-n uxplay-windows -nh`
 
-The per-user file takes precedence when it exists. Administrators can deploy a
-shared machine-wide configuration to `%ProgramData%\uxplay-windows\arguments.txt`.
+The machine-wide file takes precedence when it exists, allowing administrators
+to enforce a shared configuration. When it is absent, each user can maintain
+their own configuration under `%APPDATA%`.
 
 Environment variables are expanded when the app starts. For example:
 
@@ -63,7 +67,12 @@ Environment variables are expanded when the app starts. For example:
 -n %COMPUTERNAME% -nh
 ```
 
-## Local x64 development
+</details>
+
+<details>
+<summary><strong>Local x64 development</strong></summary>
+
+<br>
 
 After installing MSYS2, the complete local build is one PowerShell command:
 
@@ -74,6 +83,8 @@ After installing MSYS2, the complete local build is one PowerShell command:
 It produces a verified portable ZIP and MSI under `out\x64\artifacts`. See the
 [developer guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional
 commands.
+
+</details>
 
 ## TODO
 - make an update checker
