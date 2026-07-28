@@ -170,6 +170,12 @@ void MainWindow::setupUI() {
     connect(m_bleCheckbox, &QCheckBox::toggled, this, &MainWindow::toggleBle);
     layout->addWidget(m_bleCheckbox);
 
+    m_autostartCheckbox = new QCheckBox("Open uxplay-windows at login", this);
+    m_autostartCheckbox->setChecked(isAutostartEnabled());
+    connect(m_autostartCheckbox, &QCheckBox::toggled,
+            this, &MainWindow::toggleAutostart);
+    layout->addWidget(m_autostartCheckbox);
+
     // Force Fullscreen Checkbox
     m_fullscreenCheckbox = new QCheckBox("Force Fullscreen (must select renderer)", this);
     m_fullscreenCheckbox->setChecked(
@@ -205,10 +211,6 @@ void MainWindow::setupUI() {
     m_listargsBtn = new QPushButton("List UxPlay arguments", this);
     connect(m_listargsBtn, &QPushButton::clicked, this, &MainWindow::openListArgsFile);
     layout->addWidget(m_listargsBtn);
-
-    m_autostartBtn = new QPushButton(this);
-    connect(m_autostartBtn, &QPushButton::clicked, this, &MainWindow::toggleAutostart);
-    layout->addWidget(m_autostartBtn);
 
     m_licenseBtn = new QPushButton("License Information", this);
     connect(m_licenseBtn, &QPushButton::clicked, this, &MainWindow::showLicense);
@@ -425,11 +427,8 @@ void MainWindow::onAirplayError(const QString &message) {
     m_tray->showMessage("uxplay-windows", message, QSystemTrayIcon::Warning, 3000);
 }
 
-void MainWindow::toggleAutostart() {
-    bool enable = !isAutostartEnabled();
-    setAutostart(enable);
-    if (m_autostartAction)
-        m_autostartAction->setChecked(enable);
+void MainWindow::toggleAutostart(bool checked) {
+    setAutostart(checked);
     updateStatus();
 }
 
@@ -514,7 +513,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 void MainWindow::updateStatus() {
     QString status = m_running ? "UxPlay server running" : "UxPlay server stopped";
     m_statusLabel->setText(status);
-    m_autostartBtn->setText(isAutostartEnabled() ? "Open uxplay-windows on login: ON " : "Open uxplay-windows on login: OFF");
+    m_autostartCheckbox->setChecked(isAutostartEnabled());
 }
 
 bool MainWindow::isWindowsServicePresent(const std::wstring& serviceName) const {
