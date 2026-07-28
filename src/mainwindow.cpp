@@ -393,8 +393,16 @@ void MainWindow::onAirplayStarted() {
     m_running = true;
     updateStatus();
 
-    // rename video window when it pops up
     printf("onAirplayStarted()!\n");
+
+    // Only explicitly selected Direct3D sinks are known to support Alt+Enter.
+    // Leave automatically selected GStreamer sink windows unchanged.
+    if (!m_rendererCombo ||
+        m_rendererCombo->currentData().toString() == "auto") {
+        return;
+    }
+
+    // Rename the video window when it pops up.
     QTimer *monitorTimer = new QTimer(this);
     connect(monitorTimer, &QTimer::timeout, this, [this, monitorTimer]() {
         if (!m_running) {
