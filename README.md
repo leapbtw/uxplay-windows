@@ -1,6 +1,10 @@
 ```diff
-+ 4 may 2026
-+ new version is finally out! check it out in the releases section!
++ 28 july 2026
++ I'm currently working on improving the build system, so hopefully no more weird issues related to different Windows versions will arise
++ I'm also working on support for machine-wide configuration
+-
+- 4 may 2026
+- new version is finally out! check it out in the releases section!
 ```
 
 # FREE AirPlay to your Windows PC
@@ -31,7 +35,7 @@ You can also set it to run automatically when your PC starts
 > [!IMPORTANT]
 > *Why is Windows Defender complaining during installation?*
 > 
-> ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/main/stuff/defender.png "defender")
+> ![alt text](https://raw.githubusercontent.com/leapbtw/uxplay-windows/refs/heads/arm64/stuff/defender.png "defender")
 >
 > Just click on `More info` and it will let you install. It complains because the executable is not signed. If you don't trust this software you can always build it yourself! See below.
 >
@@ -44,13 +48,67 @@ You can also set it to run automatically when your PC starts
 > Please see [BUILDING.md](./docs/BUILDING.md)
 <br>
 
-## TODO
+<details>
+<summary><strong>Advanced configuration</strong></summary>
+
+<br>
+
+UxPlay arguments are read from `arguments.txt`.
+
+Configuration precedence:
+
+1. `%ProgramData%\uxplay-windows\arguments.txt`
+2. `%APPDATA%\leapbtw\uxplay-windows\arguments.txt`
+3. built-in default: `-n uxplay-windows -nh`
+
+The machine-wide file takes precedence when it exists, allowing administrators
+to enforce a shared configuration. When it is absent, each user can maintain
+their own configuration under `%APPDATA%`.
+
+Environment variables are expanded when the app starts. For example:
+
+```text
+-n %COMPUTERNAME% -nh
+```
+
+</details>
+
+<details>
+<summary><strong>Local ARM64 development</strong></summary>
+
+<br>
+
+After installing MSYS2, the complete local build is one PowerShell command:
+
+```powershell
+.\build.ps1 package
+```
+
+It produces a verified portable ZIP and MSI under `out\arm64\artifacts`. See the
+[developer guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional
+commands.
+
+</details>
+
+<details>
+<summary><strong>TODO</strong></summary>
+
+<br>
+
 - make an update checker
 
-## Known Issues
+</details>
+
+<details>
+<summary><strong>Known Issues</strong></summary>
+
+<br>
+
 ~~uxplay bugs out when waking PC from Sleep~~
 ~~you can fix this by killing uxplay-windows.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.~~  \
 Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
+
+</details>
 
 ## Reporting Issues
 Please report issues related to the build system created with GitHub Actions in this repository. For issues related to other parts of this software, report them in their respective repositories.

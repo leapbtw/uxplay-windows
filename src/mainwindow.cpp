@@ -9,12 +9,15 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDesktopServices>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QProcessEnvironment>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStyle>
@@ -71,32 +74,79 @@ MainWindow::~MainWindow() {
     stopServer();
 }
 
-void MainWindow::ensureSettingsFileExists() {
+QString MainWindow::userArgumentsPath() const {
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir dir(appDataPath);
-    if (!dir.exists()) {
-        dir.mkpath(".");
+    return appDataPath + "/arguments.txt";
+}
+
+QString MainWindow::machineArgumentsPath() const {
+    QString programDataPath =
+        QProcessEnvironment::systemEnvironment().value("ProgramData");
+    if (programDataPath.isEmpty()) {
+        programDataPath = "C:/ProgramData";
+    }
+    return programDataPath + "/uxplay-windows/arguments.txt";
+}
+
+QString MainWindow::activeArgumentsPath() const {
+    QString machinePath = machineArgumentsPath();
+    if (QFile::exists(machinePath)) {
+        return machinePath;
     }
 
-    QString filePath = appDataPath + "/arguments.txt";
-    QFile file(filePath);
-    if (!file.exists()) {
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream out(&file);
-            out << "-n uxplay-windows -nh";
-            file.close();
-        }
+    return userArgumentsPath();
+}
+
+QString MainWindow::expandEnvironmentVariables(const QString &content) const {
+    QString expanded = content;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    for (const QString &key : env.keys()) {
+        expanded.replace("%" + key + "%", env.value(key), Qt::CaseInsensitive);
+    }
+
+    return expanded;
+}
+
+void MainWindow::ensureSettingsFileExists() {
+    if (QFile::exists(userArgumentsPath()) || QFile::exists(machineArgumentsPath())) {
+        return;
+    }
+
+    QFileInfo info(userArgumentsPath());
+    QDir().mkpath(info.absolutePath());
+
+    QFile file(userArgumentsPath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << "-n uxplay-windows -nh";
+        file.close();
     }
 }
 
 QStringList MainWindow::getArgumentsFromFile() {
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QFile file(appDataPath + "/arguments.txt");
+    const QString userPath = userArgumentsPath();
+    const QString machinePath = machineArgumentsPath();
+    const QString selectedPath = activeArgumentsPath();
+
+    qInfo().noquote() << "[arguments] Machine file:"
+                      << QDir::toNativeSeparators(machinePath)
+                      << (QFile::exists(machinePath) ? "(found)" : "(not found)");
+    qInfo().noquote() << "[arguments] User file:"
+                      << QDir::toNativeSeparators(userPath)
+                      << (QFile::exists(userPath) ? "(found)" : "(not found)");
+    qInfo().noquote() << "[arguments] Reading:"
+                      << QDir::toNativeSeparators(selectedPath);
+
+    QFile file(selectedPath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QString content = QTextStream(&file).readAll().trimmed();
+        QString content = expandEnvironmentVariables(QTextStream(&file).readAll().trimmed());
         file.close();
-        return content.split(" ", Qt::SkipEmptyParts);
+        return QProcess::splitCommand(content);
     }
+
+    qWarning().noquote()
+        << "[arguments] Unable to read the selected file; using built-in defaults.";
     return QStringList() << "-n" << "uxplay-windows" << "-nh";
 }
 
@@ -119,6 +169,12 @@ void MainWindow::setupUI() {
     m_bleCheckbox->setChecked(settings.value("ble_enabled", true).toBool());
     connect(m_bleCheckbox, &QCheckBox::toggled, this, &MainWindow::toggleBle);
     layout->addWidget(m_bleCheckbox);
+
+    m_autostartCheckbox = new QCheckBox("Open uxplay-windows at login", this);
+    m_autostartCheckbox->setChecked(isAutostartEnabled());
+    connect(m_autostartCheckbox, &QCheckBox::toggled,
+            this, &MainWindow::toggleAutostart);
+    layout->addWidget(m_autostartCheckbox);
 
     // Force Fullscreen Checkbox
     m_fullscreenCheckbox = new QCheckBox("Force Fullscreen (must select renderer)", this);
@@ -156,10 +212,6 @@ void MainWindow::setupUI() {
     connect(m_listargsBtn, &QPushButton::clicked, this, &MainWindow::openListArgsFile);
     layout->addWidget(m_listargsBtn);
 
-    m_autostartBtn = new QPushButton(this);
-    connect(m_autostartBtn, &QPushButton::clicked, this, &MainWindow::toggleAutostart);
-    layout->addWidget(m_autostartBtn);
-
     m_licenseBtn = new QPushButton("License Information", this);
     connect(m_licenseBtn, &QPushButton::clicked, this, &MainWindow::showLicense);
     layout->addWidget(m_licenseBtn);
@@ -169,8 +221,7 @@ void MainWindow::setupUI() {
 }
 
 void MainWindow::openSettingsFile() {
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QString filePath = appDataPath + "/arguments.txt";
+    QString filePath = activeArgumentsPath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
     
     m_tray->showMessage("Settings", "Restart the app to apply new arguments.", 
@@ -342,8 +393,16 @@ void MainWindow::onAirplayStarted() {
     m_running = true;
     updateStatus();
 
-    // rename video window when it pops up
     printf("onAirplayStarted()!\n");
+
+    // Only explicitly selected Direct3D sinks are known to support Alt+Enter.
+    // Leave automatically selected GStreamer sink windows unchanged.
+    if (!m_rendererCombo ||
+        m_rendererCombo->currentData().toString() == "auto") {
+        return;
+    }
+
+    // Rename the video window when it pops up.
     QTimer *monitorTimer = new QTimer(this);
     connect(monitorTimer, &QTimer::timeout, this, [this, monitorTimer]() {
         if (!m_running) {
@@ -376,11 +435,8 @@ void MainWindow::onAirplayError(const QString &message) {
     m_tray->showMessage("uxplay-windows", message, QSystemTrayIcon::Warning, 3000);
 }
 
-void MainWindow::toggleAutostart() {
-    bool enable = !isAutostartEnabled();
-    setAutostart(enable);
-    if (m_autostartAction)
-        m_autostartAction->setChecked(enable);
+void MainWindow::toggleAutostart(bool checked) {
+    setAutostart(checked);
     updateStatus();
 }
 
@@ -465,7 +521,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 void MainWindow::updateStatus() {
     QString status = m_running ? "UxPlay server running" : "UxPlay server stopped";
     m_statusLabel->setText(status);
-    m_autostartBtn->setText(isAutostartEnabled() ? "Open uxplay-windows on login: ON " : "Open uxplay-windows on login: OFF");
+    m_autostartCheckbox->setChecked(isAutostartEnabled());
 }
 
 bool MainWindow::isWindowsServicePresent(const std::wstring& serviceName) const {

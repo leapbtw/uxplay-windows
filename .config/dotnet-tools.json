@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "wix": {
+      "version": "7.0.0",
+      "commands": [
+        "wix"
+      ],
+      "rollForward": false
+    }
+  }
+}

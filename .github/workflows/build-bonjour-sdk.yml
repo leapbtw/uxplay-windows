@@ -1,0 +1,31 @@
+name: build Bonjour SDK ARM64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-11-arm
+    permissions:
+      contents: read
+
+    steps:
+      - name: check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: build Bonjour SDK
+        shell: powershell
+        run: .\scripts\build-bonjour-arm64.ps1 -Force
+
+      - name: create archive
+        shell: powershell
+        run: Compress-Archive -Path "Bonjour SDK" -DestinationPath "Bonjour-SDK-arm64.zip" -Force
+
+      - name: upload Bonjour SDK
+        uses: actions/upload-artifact@v5
+        with:
+          name: Bonjour-SDK-arm64
+          path: Bonjour-SDK-arm64.zip
+          if-no-files-found: error

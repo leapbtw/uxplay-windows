@@ -27,7 +27,7 @@ protected:
 
 private slots:
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
-    void toggleAutostart();
+    void toggleAutostart(bool checked);
     void showLicense();
     void openSettingsFile();
     void openListArgsFile();
@@ -54,6 +54,10 @@ private:
 
     QStringList getArgumentsFromFile();
     void ensureSettingsFileExists();
+    QString userArgumentsPath() const;
+    QString machineArgumentsPath() const;
+    QString activeArgumentsPath() const;
+    QString expandEnvironmentVariables(const QString &content) const;
     bool ensureBonjourServiceInstalled();
     bool isWindowsServicePresent(const std::wstring &serviceName) const;
     void restartApplication();
@@ -66,10 +70,9 @@ private:
     QComboBox *m_rendererCombo = nullptr;
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_trayMenu = nullptr;
-    QAction *m_autostartAction = nullptr;
     QAction *m_statusAction = nullptr;
 
-    QPushButton *m_autostartBtn = nullptr;
+    QCheckBox *m_autostartCheckbox = nullptr;
     QPushButton *m_settingsBtn = nullptr;
     QPushButton *m_listargsBtn = nullptr;
     QPushButton *m_licenseBtn = nullptr;

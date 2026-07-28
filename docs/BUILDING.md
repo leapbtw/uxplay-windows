@@ -1,9 +1,14 @@
-## Building from Source
-This project also provides GitHub Actions to let you compile the software yourself easily. \
-If you are a developer and not just a user, you might want to take a look at [DEVELOPERS-GUIDE.md](./DEVELOPERS-GUIDE.md) instead. \
-Follow these steps:
+## Building from source
 
-1. [Fork the repo.](https://github.com/leapbtw/uxplay-windows/fork)
-2. In the `Actions` tab of your fork, select `build uxplay-windows` and run it
+The ARM64 build is fully automated by GitHub Actions:
 
-The resulting uxplay-windows.msi installer will be provided as an artifact from the GitHub Action.
+1. [Fork the repository](https://github.com/leapbtw/uxplay-windows/fork).
+2. Open the **Actions** tab.
+3. Select **build uxplay-windows ARM64** and run it.
+4. Download the `uxplay-windows-arm64` artifact.
+
+The artifact contains both the MSI installer and a portable ZIP. The workflow
+builds all dependencies, discovers the current Qt and GStreamer runtime DLLs,
+and verifies the bundle without using libraries installed on the runner.
+
+For local development, see [DEVELOPERS-GUIDE.md](./DEVELOPERS-GUIDE.md).

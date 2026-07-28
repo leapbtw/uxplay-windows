@@ -1,0 +1,51 @@
+# Core pipeline elements
+appsrc
+queue
+filesink
+fakesink
+typefind
+
+# Audio decoding and output
+avdec_aac
+avdec_alac
+audioconvert
+audioresample
+volume
+level
+autoaudiosink
+wasapisink
+wasapi2sink
+directsoundsink
+
+# Video decoding and output
+avdec_h264
+avdec_h265
+h264parse
+h265parse
+decodebin
+videoconvert
+videoscale
+autovideosink
+d3d11videosink
+d3d12videosink
+
+# Cover art, metadata, rotation and recording
+jpegdec
+imagefreeze
+textoverlay
+videoflip
+mp4mux
+aacparse
+
+# HLS playback
+playbin
+playbin3
+souphttpsrc
+hlsdemux
+hlsdemux2
+
+# Optional RTP output exposed by UxPlay
+rtph264pay
+rtph265pay
+rtpL16pay
+udpsink
