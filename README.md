@@ -1,6 +1,10 @@
 ```diff
-+ 4 may 2026
-+ new version is finally out! check it out in the releases section!
++ 28 july 2026
++ I'm currently working on improving the build system, so hopefully no more weird issues related to different Windows versions will arise
++ I'm also working on support for machine-wide configuration
+-
+- 4 may 2026
+- new version is finally out! check it out in the releases section!
 ```
 
 # FREE AirPlay to your Windows PC
