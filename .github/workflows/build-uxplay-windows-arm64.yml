@@ -42,6 +42,7 @@ jobs:
           key: bonjour-arm64-2881-${{ hashFiles('mdnsresponder-patches/2881.patch', 'scripts/build-bonjour-arm64.ps1') }}-v1
 
       - name: set up MSYS2 CLANGARM64
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: CLANGARM64
@@ -64,7 +65,7 @@ jobs:
       - name: restore Pacman package archives
         uses: actions/cache@v5
         with:
-          path: C:\msys64\var\cache\pacman\pkg
+          path: ${{ steps.msys2.outputs.msys2-location }}\var\cache\pacman\pkg
           key: pacman-clangarm64-${{ runner.os }}-${{ hashFiles('clangarm64_dependencies.txt') }}-v1
           restore-keys: |
             pacman-clangarm64-${{ runner.os }}-
@@ -77,6 +78,8 @@ jobs:
 
       - name: build, bundle and verify
         shell: powershell
+        env:
+          MSYS2_ROOT: ${{ steps.msys2.outputs.msys2-location }}
         run: .\build.ps1 package
 
       - name: upload ARM64 artifacts
