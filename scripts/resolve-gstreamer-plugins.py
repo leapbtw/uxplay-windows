@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Resolve stable GStreamer feature names to the current plugin DLLs.
 
-Copy each owning plugin into the x64 bundle and record the resolved mapping.
+Copy each owning plugin into the bundle and record the resolved mapping.
 """
 
 from __future__ import annotations

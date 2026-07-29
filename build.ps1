@@ -1,10 +1,13 @@
-<# Single entry point for preparing, building, packaging, and testing the x64 build.
+<# Single entry point for preparing, building, packaging, and testing x64 and ARM64.
    Produces the portable bundle and MSI through the same workflow locally and in CI. #>
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
     [ValidateSet("bootstrap", "build", "package", "test", "clean")]
     [string]$Action = "package",
+
+    [ValidateSet("x64", "arm64")]
+    [string]$Architecture = "x64",
 
     [string]$MsysRoot = $(if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { "C:\msys64" }),
 
@@ -19,16 +22,37 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $projectRoot = $PSScriptRoot
-$environmentName = "ucrt64"
+$architectureConfig = if ($Architecture -eq "arm64") {
+    @{
+        EnvironmentName = "clangarm64"
+        Msystem = "CLANGARM64"
+        DependencyFile = "clangarm64_dependencies.txt"
+        PackagePrefix = "^mingw-w64-clang-aarch64-"
+        BonjourBinDirectory = "arm64"
+        WixArchitecture = "arm64"
+        PythonArchitecturePattern = "^(?i:arm64|aarch64)$"
+    }
+} else {
+    @{
+        EnvironmentName = "ucrt64"
+        Msystem = "UCRT64"
+        DependencyFile = "ucrt_x64_dependencies.txt"
+        PackagePrefix = "^mingw-w64-ucrt-x86_64-"
+        BonjourBinDirectory = "x64"
+        WixArchitecture = "x64"
+        PythonArchitecturePattern = "^(?i:amd64|x86_64)$"
+    }
+}
+$environmentName = $architectureConfig.EnvironmentName
 $prefix = Join-Path $MsysRoot $environmentName
 $runtimeBin = Join-Path $prefix "bin"
-$outDir = Join-Path $projectRoot "out\x64"
+$outDir = Join-Path $projectRoot "out\$Architecture"
 $buildDir = Join-Path $outDir "build"
 $beaconOutDir = Join-Path $outDir "beacon"
 $artifactDir = Join-Path $outDir "artifacts"
 $stageDir = Join-Path $projectRoot "release"
 $bonjourSdk = Join-Path $projectRoot "Bonjour SDK"
-$featuresFile = Join-Path $projectRoot "packaging\gstreamer-features-x64.txt"
+$featuresFile = Join-Path $projectRoot "packaging\gstreamer-features.txt"
 $wixCacheDir = Join-Path $projectRoot ".wix"
 
 function Invoke-Native {
@@ -76,13 +100,16 @@ function Assert-BuildTools {
     )
     $missing = $required | Where-Object { -not (Test-Path -LiteralPath $_) }
     if ($missing) {
-        throw "Required UCRT64 tools are missing:`n$($missing -join [Environment]::NewLine)"
+        throw (
+            "Required $($architectureConfig.Msystem) tools are missing:`n" +
+            ($missing -join [Environment]::NewLine)
+        )
     }
 }
 
 function Set-BuildEnvironment {
     Assert-Msys2
-    $env:MSYSTEM = "UCRT64"
+    $env:MSYSTEM = $architectureConfig.Msystem
     $env:PATH = "$runtimeBin;$(Join-Path $MsysRoot 'usr\bin');$env:PATH"
     $env:BONJOUR_SDK_HOME = $bonjourSdk
     $env:BONJOUR_SDK = $bonjourSdk
@@ -110,9 +137,11 @@ function Get-BeaconPython {
         $candidates += $windowsPython.Source
     }
 
-    # Preserve compatibility with existing local MSYS2 setups. CI always
-    # provides native Windows CPython through actions/setup-python.
-    $candidates += (Join-Path $runtimeBin "python.exe")
+    if ($Architecture -eq "x64") {
+        # Preserve compatibility with existing local x64 MSYS2 setups. CI
+        # always provides native Windows CPython through actions/setup-python.
+        $candidates += (Join-Path $runtimeBin "python.exe")
+    }
 
     $selected = $candidates |
         Where-Object { $_ -and (Test-Path -LiteralPath $_) } |
@@ -120,7 +149,7 @@ function Get-BeaconPython {
     if (-not $selected) {
         throw (
             "Python for the Bluetooth beacon was not found. Install CPython " +
-            "3.14 x64 or pass -BeaconPython C:\path\to\python.exe."
+            "3.14 $Architecture or pass -BeaconPython C:\path\to\python.exe."
         )
     }
     return (Resolve-Path -LiteralPath $selected).Path
@@ -144,6 +173,21 @@ function Assert-BeaconPythonPackages {
         [string]$Python
     )
 
+    if (-not (Test-MsysPython -Python $Python)) {
+        $pythonArchitecture = (
+            & $Python -c "import platform; print(platform.machine())"
+        ).Trim()
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $pythonArchitecture -notmatch $architectureConfig.PythonArchitecturePattern
+        ) {
+            throw (
+                "The Bluetooth beacon requires native Windows $Architecture " +
+                "Python; $Python reports '$pythonArchitecture'."
+            )
+        }
+    }
+
     & $Python -c (
         "import PyInstaller;" +
         "import psutil;" +
@@ -164,7 +208,7 @@ function Install-Dependencies {
     $beaconPython = Get-BeaconPython
     Set-BuildEnvironment
     $pacman = Join-Path $MsysRoot "usr\bin\pacman.exe"
-    $packageList = Join-Path $projectRoot "ucrt_x64_dependencies.txt"
+    $packageList = Join-Path $projectRoot $architectureConfig.DependencyFile
     $packages = Get-Content -LiteralPath $packageList |
         ForEach-Object { $_.Trim() } |
         Where-Object { $_ -and -not $_.StartsWith("#") }
@@ -190,7 +234,7 @@ function Install-Dependencies {
     }
     $pipArguments += @(
         "--requirement",
-        (Join-Path $projectRoot "packaging\python-requirements-x64.txt")
+        (Join-Path $projectRoot "packaging\python-requirements.txt")
     )
     Invoke-Native `
         -FilePath $beaconPython `
@@ -199,17 +243,9 @@ function Install-Dependencies {
 }
 
 function Ensure-BonjourSdk {
-    $required = @(
-        (Join-Path $bonjourSdk "Include\dns_sd.h"),
-        (Join-Path $bonjourSdk "Lib\x64\dnssd.lib"),
-        (Join-Path $bonjourSdk "Bin\x64\dnssd.dll"),
-        (Join-Path $bonjourSdk "Bin\x64\mDNSResponder.exe")
-    )
-    $missing = $required | Where-Object { -not (Test-Path -LiteralPath $_) }
-    if ($missing) {
-        & (Join-Path $projectRoot "scripts\build-bonjour-x64.ps1") `
-            -ProjectRoot $projectRoot
-    }
+    & (Join-Path $projectRoot "scripts\build-bonjour.ps1") `
+        -ProjectRoot $projectRoot `
+        -Architecture $Architecture
 }
 
 function Build-Application {
@@ -294,12 +330,12 @@ function Write-BuildManifest {
     $pacmanOutput = & $pacman -Q
     if ($LASTEXITCODE -eq 0) {
         $packageVersions = $pacmanOutput |
-            Where-Object { $_ -match "^mingw-w64-ucrt-x86_64-" }
+            Where-Object { $_ -match $architectureConfig.PackagePrefix }
     }
 
     $manifest = [ordered]@{
         generatedAtUtc = [DateTime]::UtcNow.ToString("o")
-        architecture = "x64"
+        architecture = $Architecture
         branch = (& git -C $projectRoot branch --show-current).Trim()
         commit = (& git -C $projectRoot rev-parse HEAD).Trim()
         # Read the gitlink directly. `git submodule` launches helper shell
@@ -348,11 +384,11 @@ function Stage-Runtime {
         (Join-Path $stageDir "uxplay-bluetooth-beacon.exe") `
         -Force
     Copy-Item `
-        (Join-Path $bonjourSdk "Bin\x64\dnssd.dll") `
+        (Join-Path $bonjourSdk "Bin\$($architectureConfig.BonjourBinDirectory)\dnssd.dll") `
         (Join-Path $stageDir "dnssd.dll") `
         -Force
     Copy-Item `
-        (Join-Path $bonjourSdk "Bin\x64\mDNSResponder.exe") `
+        (Join-Path $bonjourSdk "Bin\$($architectureConfig.BonjourBinDirectory)\mDNSResponder.exe") `
         (Join-Path $stageDir "mDNSResponder.exe") `
         -Force
     Copy-Item `
@@ -514,7 +550,7 @@ function Ensure-Wix {
 
 function Build-Artifacts {
     New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-    $zip = Join-Path $artifactDir "uxplay-windows-x64-portable.zip"
+    $zip = Join-Path $artifactDir "uxplay-windows-$Architecture-portable.zip"
     if (Test-Path -LiteralPath $zip) {
         Remove-Item -LiteralPath $zip -Force
     }
@@ -526,7 +562,7 @@ function Build-Artifacts {
     if (-not $SkipInstaller) {
         Ensure-Wix
         $dotnet = (Get-Command dotnet.exe -ErrorAction Stop).Source
-        $msi = Join-Path $artifactDir "uxplay-windows-x64.msi"
+        $msi = Join-Path $artifactDir "uxplay-windows-$Architecture.msi"
         $wixPdb = [IO.Path]::ChangeExtension($msi, ".wixpdb")
         if (Test-Path -LiteralPath $wixPdb) {
             Remove-Item -LiteralPath $wixPdb -Force
@@ -537,7 +573,7 @@ function Build-Artifacts {
                 "wix", "build",
                 "-acceptEula", "wix7",
                 (Join-Path $projectRoot "product.wxs"),
-                "-arch", "x64",
+                "-arch", $architectureConfig.WixArchitecture,
                 "-out", $msi,
                 "-pdbtype", "none",
                 "-ext", "WixToolset.UI.wixext"
@@ -560,7 +596,7 @@ function Clear-BuildOutputs {
 
         $resolved = [IO.Path]::GetFullPath($target)
         $allowedRoots = @(
-            [IO.Path]::GetFullPath((Join-Path $projectRoot "out\x64")),
+            [IO.Path]::GetFullPath($outDir),
             [IO.Path]::GetFullPath((Join-Path $projectRoot "release")),
             [IO.Path]::GetFullPath((Join-Path $projectRoot ".wix"))
         )
@@ -596,6 +632,6 @@ switch ($Action) {
     }
     "clean" {
         Clear-BuildOutputs
-        Write-Host "x64 build outputs removed."
+        Write-Host "$Architecture build outputs removed."
     }
 }

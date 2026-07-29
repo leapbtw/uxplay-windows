@@ -1,4 +1,4 @@
-<# Verifies that the x64 bundle is complete and independent of the development setup.
+<# Verifies that a bundle is complete and independent of the development setup.
    Runs static checks and the self-test with runtime paths restricted to the release. #>
 [CmdletBinding()]
 param(
@@ -81,7 +81,7 @@ try {
     }
     $pluginDir = Join-Path $stage "lib\gstreamer-1.0"
     $scanner = Join-Path $stage "libexec\gstreamer-1.0\gst-plugin-scanner.exe"
-    $registry = Join-Path $TestCacheDir "registry-x64.bin"
+    $registry = Join-Path $TestCacheDir "registry.bin"
 
     if (Test-Path -LiteralPath $registry) {
         Remove-Item -LiteralPath $registry -Force

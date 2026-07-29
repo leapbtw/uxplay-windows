@@ -71,19 +71,20 @@ Environment variables are expanded when the app starts. For example:
 </details>
 
 <details>
-<summary><strong>Local x64 development</strong></summary>
+<summary><strong>Local development (x64 and ARM64)</strong></summary>
 
 <br>
 
 After installing MSYS2, the complete local build is one PowerShell command:
 
 ```powershell
-.\build.ps1 package
+.\build.ps1 package -Architecture x64
+.\build.ps1 package -Architecture arm64
 ```
 
-It produces a verified portable ZIP and MSI under `out\x64\artifacts`. See the
-[developer guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional
-commands.
+Each command produces a verified portable ZIP and MSI under the corresponding
+`out\<architecture>\artifacts` directory. See the [developer
+guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional commands.
 
 </details>
 

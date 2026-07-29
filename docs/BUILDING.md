@@ -1,14 +1,15 @@
 ## Building from source
 
-The x64 build is fully automated by GitHub Actions:
+The x64 and ARM64 builds are fully automated by one GitHub Actions workflow:
 
 1. [Fork the repository](https://github.com/leapbtw/uxplay-windows/fork).
 2. Open the **Actions** tab.
-3. Select **build uxplay-windows x64** and run it.
-4. Download the `uxplay-windows-x64` artifact.
+3. Select **build uxplay-windows** and run it.
+4. Download `uxplay-windows-x64`, `uxplay-windows-arm64`, or both.
 
-The artifact contains both the MSI installer and a portable ZIP. The workflow
-builds all dependencies, discovers the current Qt and GStreamer runtime DLLs,
-and verifies the bundle without using libraries installed on the runner.
+Each artifact contains an MSI installer and a portable ZIP. The workflow builds
+both architectures independently, discovers the current Qt and GStreamer
+runtime DLLs, and verifies each bundle without using libraries installed on the
+runner.
 
 For local development, see [DEVELOPERS-GUIDE.md](./DEVELOPERS-GUIDE.md).

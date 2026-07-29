@@ -1,5 +1,5 @@
-<# Builds and validates the recursive PE dependency closure of the x64 bundle.
-   Reads imports with objdump and automatically copies missing UCRT64 DLLs. #>
+<# Builds and validates the recursive PE dependency closure of a Windows bundle.
+   Reads imports with objdump and copies missing DLLs from the selected MSYS2 environment. #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
@@ -42,6 +42,12 @@ function Get-RelativePath {
 $stage = (Resolve-Path -LiteralPath $StageDir).Path
 $runtimeBin = Join-Path $MsysRoot "$EnvironmentName\bin"
 $objdump = Join-Path $runtimeBin "objdump.exe"
+$runtimeAliases = @{
+    # Some CLANGARM64 packages ship lib-prefixed files whose PE import names
+    # omit that prefix.
+    "dovi.dll" = "libdovi.dll"
+    "rav1e.dll" = "librav1e.dll"
+}
 
 if (-not (Test-Path -LiteralPath $objdump)) {
     throw "objdump.exe not found at $objdump"
@@ -106,6 +112,13 @@ while ($queue.Count -gt 0) {
         }
 
         $runtimeDependency = Join-Path $runtimeBin $import
+        if (
+            -not (Test-Path -LiteralPath $runtimeDependency) -and
+            $runtimeAliases.ContainsKey($import)
+        ) {
+            $runtimeDependency = Join-Path $runtimeBin $runtimeAliases[$import]
+        }
+
         if (Test-Path -LiteralPath $runtimeDependency) {
             if ($ValidateOnly) {
                 $relativeBinary = Get-RelativePath -BasePath $stage -Path $binary

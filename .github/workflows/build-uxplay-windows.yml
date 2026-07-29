@@ -1,0 +1,104 @@
+name: build uxplay-windows
+
+on:
+  push:
+    branches:
+      - multi-arch
+      - main
+  pull_request:
+    branches:
+      - multi-arch
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build, bundle and test ${{ matrix.architecture }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x64
+            runner: windows-2022
+            msystem: UCRT64
+            python_architecture: x64
+          - architecture: arm64
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            python_architecture: arm64
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+    permissions:
+      contents: read
+
+    steps:
+      - name: preserve shell script line endings
+        shell: powershell
+        run: git config --global core.autocrlf input
+
+      - name: check out repository
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: restore Bonjour SDK cache
+        uses: actions/cache@v5
+        with:
+          path: Bonjour SDK
+          key: bonjour-${{ matrix.architecture }}-2881-${{ hashFiles('mdnsresponder-patches/2881.patch', 'scripts/build-bonjour.ps1') }}-v1
+
+      - name: set up MSYS2 ${{ matrix.msystem }}
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          cache: true
+
+      - name: set up native Windows Python for WinRT
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          architecture: ${{ matrix.python_architecture }}
+          cache: pip
+          cache-dependency-path: packaging/python-requirements.txt
+
+      - name: set up .NET SDK for WiX
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: restore Pacman package archives
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.msys2.outputs.msys2-location }}\var\cache\pacman\pkg
+          key: pacman-${{ matrix.msystem }}-${{ runner.os }}-${{ hashFiles('ucrt_x64_dependencies.txt', 'clangarm64_dependencies.txt') }}-v1
+          restore-keys: |
+            pacman-${{ matrix.msystem }}-${{ runner.os }}-
+
+      - name: restore WiX NuGet cache
+        uses: actions/cache@v5
+        with:
+          path: out/${{ matrix.architecture }}/nuget-packages
+          key: wix-${{ matrix.architecture }}-${{ runner.os }}-${{ hashFiles('.config/dotnet-tools.json', 'NuGet.config') }}-v4
+
+      - name: build, bundle and verify
+        shell: powershell
+        env:
+          MSYS2_ROOT: ${{ steps.msys2.outputs.msys2-location }}
+        run: .\build.ps1 package -Architecture ${{ matrix.architecture }}
+
+      - name: upload ${{ matrix.architecture }} artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: uxplay-windows-${{ matrix.architecture }}
+          path: out/${{ matrix.architecture }}/artifacts/*
+          if-no-files-found: error
