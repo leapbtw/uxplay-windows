@@ -243,7 +243,7 @@ void MainWindow::setupTray() {
         trayIcon = QApplication::style()->standardIcon(QStyle::SP_MediaPlay);
     }
     m_tray->setIcon(trayIcon);
-    m_tray->setToolTip("uxplay-windows");
+    m_tray->setToolTip("AudioShare");
 
     m_trayMenu = new QMenu(this);
     m_trayMenu->addAction("Quit", this, &MainWindow::quit);
@@ -252,7 +252,7 @@ void MainWindow::setupTray() {
     m_tray->setContextMenu(m_trayMenu);
     
     connect(m_tray, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivated);
-    m_tray->show();
+    // m_tray->show(); // Ẩn hoàn toàn tray icon
 }
 
 void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason) {
@@ -432,7 +432,7 @@ void MainWindow::onAirplayStopped() {
 }
 
 void MainWindow::onAirplayError(const QString &message) {
-    m_tray->showMessage("uxplay-windows", message, QSystemTrayIcon::Warning, 3000);
+    m_tray->showMessage("AudioShare", message, QSystemTrayIcon::Warning, 3000);
 }
 
 void MainWindow::toggleAutostart(bool checked) {

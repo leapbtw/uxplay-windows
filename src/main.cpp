@@ -143,10 +143,13 @@ int main(int argc, char *argv[]) {
 
     app.setQuitOnLastWindowClosed(false);
 
+    // Bỏ qua kiểm tra System Tray để có thể chạy ngầm hoàn toàn
+    /*
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         QMessageBox::critical(nullptr, "Error", "System tray not available.");
         return 1;
     }
+    */
 
     MainWindow window;
     return app.exec();
