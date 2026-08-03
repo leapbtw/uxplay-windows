@@ -13,21 +13,8 @@ Download the latest version of uxplay-windows from [**releases**](https://github
 After installing, control uxplay-windows from it's [tray icon](https://www.odu.edu/sites/default/files/documents/win10-system-tray.pdf)! Right-click it to start or stop AirPlay. \
 You can also set it to run automatically when your PC starts
 
-## FAQ — Please Read!
-> [!NOTE]
-> *What is uxplay-windows?*
-> 
-> [uxplay-windows](.) is a software that allows you to video stream with AirPlay to your windows PC. \
-> It turns [UxPlay](https://github.com/FDH2/UxPlay/) into a fully featured App for Windows 10/11 users, making it easier for those who may find compiling UxPlay challenging.
-> 
-> Most other software achieving the same functionality as `uxplay-windows` is usually paid and non-free.
-
-
-> [!TIP]
-> *My \<apple device\> can't connect to my PC!!!*
-> 1. Check if the `uxplay-windows.exe` is running: right-click the tray icon and restart it.
-> 2. Toggle Wi-Fi and Bluetooth OFF on your iPhone/iPad/Mac, wait a couple of seconds and reconnect. It might take a few attempts.
-> 3. As last resort, close uxplay-windows, open Task Manager and restart `Bonjour Service` from the Services tab. Then reopen uxplay-windows and try again
+## WIKI (FAQ / Troubleshooting / Help)
+Please take a look at the [Wiki](https://github.com/leapbtw/uxplay-windows/wiki), it should contain everything you're looking for
 
 > [!IMPORTANT]
 > *Why is Windows Defender complaining during installation?*
@@ -38,12 +25,15 @@ You can also set it to run automatically when your PC starts
 >
 > If prompted by Windows Firewall, please **allow** uxplay-windows to ensure it functions properly.
 
-
-> [!NOTE]
->  *How do I build this software myself?*
-> 
-> Please see [BUILDING.md](./docs/BUILDING.md)
 <br>
+<details>
+<summary><strong>Building</strong></summary>
+
+*How do I build this software myself?*
+ 
+Please see [BUILDING.md](./docs/BUILDING.md)
+<br>
+</details>
 
 <details>
 <summary><strong>Advanced configuration</strong></summary>
@@ -94,6 +84,8 @@ guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional commands.
 <br>
 
 - make an update checker
+- include uxplay.exe for debugging purposes
+- ~~pass arguments from uxplay-windows.exe to uxplay~~ or maybe not
 
 </details>
 
