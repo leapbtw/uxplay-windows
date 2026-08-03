@@ -98,6 +98,8 @@ guide](./docs/DEVELOPERS-GUIDE.md) for prerequisites and additional commands.
 ~~you can fix this by killing uxplay-windows.exe and restarting Bonjour Service, and restarting uxplay.exe. Also restarting your PC might fix this.~~  \
 Apparently moving from Bonjour PS to mDNSResponder fixed it? :)
 
+- Sometimes just after connecting the iPhone to uxplay-windows, the stream appears but frozen. Reconnecting a second time fixes this. Probably an upstream issue maybe already fixed in the newer UxPlay version. I need to investigate further
+
 </details>
 
 ## Reporting Issues
