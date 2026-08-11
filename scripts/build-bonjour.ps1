@@ -32,7 +32,7 @@ if ($Architecture -eq "arm64") {
     $required += (Join-Path $sdk "Lib\arm64\dnssd.lib")
 }
 
-$cacheValid = ($required | Where-Object { -not (Test-Path $_) }).Count -eq 0
+$cacheValid = @($required | Where-Object { -not (Test-Path $_) }).Count -eq 0
 if ($cacheValid) {
     try {
         $buildInfo = Get-Content `
