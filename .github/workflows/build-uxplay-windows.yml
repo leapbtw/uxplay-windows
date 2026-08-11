@@ -5,6 +5,9 @@ on:
     branches:
       - multi-arch
       - main
+    tags:
+      - "v*"
+      - "test*"
   pull_request:
     branches:
       - multi-arch
@@ -36,6 +39,7 @@ jobs:
       DOTNET_NOLOGO: "1"
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
     permissions:
+      actions: read
       contents: read
 
     steps:
@@ -97,8 +101,30 @@ jobs:
         run: .\build.ps1 package -Architecture ${{ matrix.architecture }}
 
       - name: upload ${{ matrix.architecture }} artifacts
-        uses: actions/upload-artifact@v5
+        id: upload-unsigned-artifacts
+        uses: actions/upload-artifact@v7
         with:
           name: uxplay-windows-${{ matrix.architecture }}
           path: out/${{ matrix.architecture }}/artifacts/*
+          if-no-files-found: error
+
+      - name: sign ${{ matrix.architecture }} artifacts
+        id: sign-artifacts
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/test')
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned-artifacts.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: out/${{ matrix.architecture }}/signed
+
+      - name: upload signed ${{ matrix.architecture }} artifacts
+        if: steps.sign-artifacts.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: uxplay-windows-${{ matrix.architecture }}-signed
+          path: out/${{ matrix.architecture }}/signed/*
           if-no-files-found: error
