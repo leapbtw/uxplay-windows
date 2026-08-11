@@ -333,10 +333,19 @@ function Write-BuildManifest {
             Where-Object { $_ -match $architectureConfig.PackagePrefix }
     }
 
+    $sourceRef = & git -C $projectRoot branch --show-current
+    if ($sourceRef) {
+        $sourceRef = $sourceRef.Trim()
+    } elseif ($env:GITHUB_REF_NAME) {
+        $sourceRef = $env:GITHUB_REF_NAME.Trim()
+    } else {
+        $sourceRef = (& git -C $projectRoot rev-parse --short HEAD).Trim()
+    }
+
     $manifest = [ordered]@{
         generatedAtUtc = [DateTime]::UtcNow.ToString("o")
         architecture = $Architecture
-        branch = (& git -C $projectRoot branch --show-current).Trim()
+        branch = $sourceRef
         commit = (& git -C $projectRoot rev-parse HEAD).Trim()
         # Read the gitlink directly. `git submodule` launches helper shell
         # scripts whose Unix utilities might not be on PATH in PowerShell.
