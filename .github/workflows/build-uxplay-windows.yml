@@ -117,6 +117,7 @@ jobs:
           organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
           github-artifact-id: ${{ steps.upload-unsigned-artifacts.outputs.artifact-id }}
           wait-for-completion: true
           output-artifact-directory: out/${{ matrix.architecture }}/signed
