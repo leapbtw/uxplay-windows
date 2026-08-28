@@ -190,7 +190,7 @@ void MainWindow::setupUI() {
     m_rendererCombo->addItem("Video Renderer (Auto)", "auto");
     m_rendererCombo->addItem("D3D11", "d3d11");
     m_rendererCombo->addItem("D3D12", "d3d12");
-    m_rendererCombo->addItem("Audio Only (-vs 0)", "audio-only");
+    m_rendererCombo->addItem("Audio Only", "audio-only");
 
     {
         QString saved = settings.value("renderer_mode", "auto").toString();
