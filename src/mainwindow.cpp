@@ -190,6 +190,7 @@ void MainWindow::setupUI() {
     m_rendererCombo->addItem("Video Renderer (Auto)", "auto");
     m_rendererCombo->addItem("D3D11", "d3d11");
     m_rendererCombo->addItem("D3D12", "d3d12");
+    m_rendererCombo->addItem("Audio Only (-vs 0)", "audio-only");
 
     {
         QString saved = settings.value("renderer_mode", "auto").toString();
@@ -309,27 +310,34 @@ void MainWindow::applyRendererAndFullscreenArgs(QStringList &args) {
         args << "-fs";
     }
 
-    // Remove existing "-vs <sink>" pairs
+    QString mode = "auto";
+    if (m_rendererCombo) {
+        mode = m_rendererCombo->currentData().toString();
+    }
+
+    if (mode == "auto") {
+        return;
+    }
+
+    // An explicitly selected GUI renderer overrides any -vs option from the
+    // arguments file. In Auto mode, keep the file's -vs option unchanged.
     for (int i = 0; i < args.size();) {
         if (args[i] == "-vs") {
-            args.removeAt(i); // -vs
+            args.removeAt(i);
             if (i < args.size()) {
-                args.removeAt(i); // sink
+                args.removeAt(i);
             }
             continue;
         }
         ++i;
     }
 
-    QString mode = "auto";
-    if (m_rendererCombo) {
-        mode = m_rendererCombo->currentData().toString();
-    }
-
     if (mode == "d3d11") {
         args << "-vs" << "d3d11videosink";
     } else if (mode == "d3d12") {
         args << "-vs" << "d3d12videosink";
+    } else if (mode == "audio-only") {
+        args << "-vs" << "0";
     }
 }
 
