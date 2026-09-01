@@ -59,7 +59,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setupTray();
     setupUI();
 
-    // If Bonjour Service is missing, we must install it; otherwise we exit.
+    // Bonjour improves device discovery, but the server can also run without it.
     if (ensureBonjourServiceInstalled()) {
         startServer();
     } else {
@@ -557,20 +557,26 @@ bool MainWindow::ensureBonjourServiceInstalled() {
 
     int choice = QMessageBox::question(
         this,
-        "Bonjour Service Required",
-        "Bonjour Service is required for discovery (mDNS). It is not "
-        "installed.\n\nDo you want to install it now?",
+        "Bonjour Service Not Installed",
+        "Bonjour Service is not installed. Installing it is recommended for "
+        "reliable AirPlay device discovery (mDNS).\n\n"
+        "Do you want to install it now?",
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::Yes
     );
 
     if (choice != QMessageBox::Yes) {
-        QMessageBox::critical(
+        QMessageBox::warning(
             this,
-            "Bonjour Service Missing",
-            "Bonjour Service is required. The application will now exit."
+            "Continuing Without Bonjour",
+            "You can continue without Bonjour, but the following conditions "
+            "must be met:\n\n"
+            "1. Both devices must be connected to the same local network.\n"
+            "2. Bluetooth must be enabled on both devices.\n"
+            "3. Bluetooth Discovery must remain enabled in uxplay-windows.\n\n"
+            "Without Bonjour, your devices may still be unable to find each other."
         );
-        return false;
+        return true;
     }
 
     QMessageBox::information(
