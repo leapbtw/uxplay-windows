@@ -63,8 +63,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     if (ensureBonjourServiceInstalled()) {
         startServer();
     } else {
-        m_quitting = true;
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        if (!m_quitting) {
+            m_quitting = true;
+            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        }
         return;
     }
 }
@@ -611,12 +613,10 @@ void MainWindow::restartApplication() {
     m_quitting = true;
     stopServer();
 
-    QString exePath = QApplication::applicationFilePath();
-    QStringList args = QCoreApplication::arguments();
-    if (!args.isEmpty()) args.removeFirst(); // remove exe path
-
-    QProcess::startDetached(exePath, args);
-
-    // close GUI of current process after a short delay
-    QTimer::singleShot(200, qApp, &QCoreApplication::quit);
+    // Let main() release the single-instance pipe before starting the
+    // replacement process. Starting it here would make it mistake this
+    // still-running process for the instance it should activate.
+    QTimer::singleShot(0, qApp, []() {
+        QCoreApplication::exit(MainWindow::RestartExitCode);
+    });
 }

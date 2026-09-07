@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Core Network Widgets REQUIRED)
 
 # build uxplay as a static library
 add_subdirectory(libuxplay)
@@ -21,6 +21,7 @@ add_executable(uxplay-windows WIN32
 
 target_link_libraries(uxplay-windows PRIVATE
     Qt6::Core
+    Qt6::Network
     Qt6::Widgets
     uxplay
 )

@@ -1,19 +1,83 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QIcon>
+#include <QLocalServer>
+#include <QLocalSocket>
 #include <QMessageBox>
+#include <QPointer>
+#include <QProcess>
 #include <QProcessEnvironment>
 #include <QSystemTrayIcon>
 #include <QTextStream>
+#include <QThread>
 
 #include <gst/gst.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <cstdio>
+#endif
+
+#ifdef _WIN32
+static DWORD currentSessionId() {
+    DWORD sessionId = 0;
+    if (!ProcessIdToSessionId(GetCurrentProcessId(), &sessionId)) {
+        sessionId = 0;
+    }
+
+    return sessionId;
+}
+
+static QString singleInstanceMutexName() {
+    return QStringLiteral("Local\\leapbtw.uxplay-windows.%1")
+        .arg(currentSessionId());
+}
+
+static QString singleInstanceServerName() {
+    return QStringLiteral("leapbtw.uxplay-windows.%1")
+        .arg(currentSessionId());
+}
+
+static bool notifyRunningInstance(const QString &serverName) {
+    // The mutex is created just before the pipe starts listening. Retry for a
+    // short time so a simultaneous launch cannot lose that startup race.
+    QElapsedTimer timer;
+    timer.start();
+
+    do {
+        QLocalSocket socket;
+        socket.connectToServer(serverName, QIODevice::ReadWrite);
+        if (socket.waitForConnected(250)) {
+            socket.write("activate\n");
+            if (!socket.waitForBytesWritten(1000) ||
+                !socket.waitForReadyRead(2000)) {
+                return false;
+            }
+
+            const bool acknowledged = socket.readAll().startsWith("ok\n");
+            socket.disconnectFromServer();
+            return acknowledged;
+        }
+
+        QThread::msleep(50);
+    } while (timer.elapsed() < 2000);
+
+    return false;
+}
+
+static void activateWindow(MainWindow *window) {
+    if (!window) {
+        return;
+    }
+
+    window->showNormal();
+    window->raise();
+    window->activateWindow();
+}
 #endif
 
 static int runRuntimeSelfTest(const QString &appPath) {
@@ -141,13 +205,155 @@ int main(int argc, char *argv[]) {
         return runRuntimeSelfTest(appPath);
     }
 
+#ifdef _WIN32
+    const QString mutexName = singleInstanceMutexName();
+    SetLastError(ERROR_SUCCESS);
+    HANDLE singleInstanceMutex = CreateMutexW(
+        nullptr,
+        FALSE,
+        reinterpret_cast<LPCWSTR>(mutexName.utf16())
+    );
+    DWORD mutexError = GetLastError();
+    bool alreadyRunning =
+        singleInstanceMutex && mutexError == ERROR_ALREADY_EXISTS;
+
+    // An elevated first instance can deny CreateMutex's requested access to a
+    // non-elevated second instance. Opening it with minimal access is enough to
+    // establish that the first instance exists.
+    if (!singleInstanceMutex && mutexError == ERROR_ACCESS_DENIED) {
+        singleInstanceMutex = OpenMutexW(
+            SYNCHRONIZE,
+            FALSE,
+            reinterpret_cast<LPCWSTR>(mutexName.utf16())
+        );
+        alreadyRunning = singleInstanceMutex != nullptr;
+        if (!singleInstanceMutex) {
+            mutexError = GetLastError();
+        }
+    }
+
+    if (!singleInstanceMutex) {
+        QMessageBox::critical(
+            nullptr,
+            "uxplay-windows",
+            QStringLiteral("Unable to create the single-instance lock "
+                           "(Windows error %1).")
+                .arg(mutexError)
+        );
+        return 1;
+    }
+
+    const QString serverName = singleInstanceServerName();
+    if (alreadyRunning) {
+        const bool notified = notifyRunningInstance(serverName);
+        CloseHandle(singleInstanceMutex);
+
+        if (!notified) {
+            QMessageBox::critical(
+                nullptr,
+                "uxplay-windows",
+                "uxplay-windows is already running but did not respond."
+            );
+            return 1;
+        }
+        return 0;
+    }
+
+    QLocalServer singleInstanceServer;
+    singleInstanceServer.setSocketOptions(QLocalServer::UserAccessOption);
+
+    if (!singleInstanceServer.listen(serverName)) {
+        QMessageBox::critical(
+            nullptr,
+            "uxplay-windows",
+            "Unable to create the single-instance communication pipe.\n\n" +
+                singleInstanceServer.errorString()
+        );
+        CloseHandle(singleInstanceMutex);
+        return 1;
+    }
+
+    QPointer<MainWindow> window;
+    bool activationPending = false;
+    QObject::connect(
+        &singleInstanceServer,
+        &QLocalServer::newConnection,
+        &app,
+        [&singleInstanceServer, &window, &activationPending]() {
+            while (singleInstanceServer.hasPendingConnections()) {
+                QLocalSocket *socket =
+                    singleInstanceServer.nextPendingConnection();
+                socket->readAll();
+
+                if (window) {
+                    activateWindow(window);
+                } else {
+                    activationPending = true;
+                }
+
+                socket->write("ok\n");
+                socket->flush();
+                socket->disconnectFromServer();
+                socket->deleteLater();
+            }
+        }
+    );
+#endif
+
     app.setQuitOnLastWindowClosed(false);
 
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         QMessageBox::critical(nullptr, "Error", "System tray not available.");
+#ifdef _WIN32
+        singleInstanceServer.close();
+        CloseHandle(singleInstanceMutex);
+#endif
         return 1;
     }
 
-    MainWindow window;
-    return app.exec();
+    int exitCode = 0;
+    {
+        MainWindow mainWindow;
+#ifdef _WIN32
+        window = &mainWindow;
+        if (activationPending) {
+            activateWindow(window);
+        }
+#endif
+        exitCode = app.exec();
+#ifdef _WIN32
+        window.clear();
+#endif
+    }
+
+    if (exitCode == MainWindow::RestartExitCode) {
+#ifdef _WIN32
+        // The pipe must be gone before the replacement checks for an existing
+        // instance.
+        singleInstanceServer.close();
+        CloseHandle(singleInstanceMutex);
+        singleInstanceMutex = nullptr;
+#endif
+        QStringList arguments = QCoreApplication::arguments();
+        if (!arguments.isEmpty()) {
+            arguments.removeFirst();
+        }
+
+        if (!QProcess::startDetached(
+                QCoreApplication::applicationFilePath(), arguments)) {
+            QMessageBox::critical(
+                nullptr,
+                "uxplay-windows",
+                "Unable to restart uxplay-windows."
+            );
+            return 1;
+        }
+        return 0;
+    }
+
+#ifdef _WIN32
+    singleInstanceServer.close();
+    CloseHandle(singleInstanceMutex);
+#endif
+    return exitCode;
 }

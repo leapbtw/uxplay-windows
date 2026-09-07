@@ -19,6 +19,8 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
+    static constexpr int RestartExitCode = 100;
+
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
