@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "sessionlog.h"
 #include <QApplication>
 #include <QDir>
 #include <QElapsedTimer>
@@ -20,6 +21,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <cstdio>
+#include <io.h>
 #endif
 
 #ifdef _WIN32
@@ -161,18 +163,25 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
     // if the process was started from a console (CMD/PowerShell), attach to it so we can see qDebug() output.
     if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-        // redirect stdout and stderr to the console
+        // Preserve an existing output redirection when attaching the terminal.
         FILE* fp;
-        freopen_s(&fp, "CONOUT$", "w", stdout);
-        freopen_s(&fp, "CONOUT$", "w", stderr);
-        freopen_s(&fp, "CONIN$", "r", stdin);
-        std::ios::sync_with_stdio();
+        if (_fileno(stdout) < 0) freopen_s(&fp, "CONOUT$", "w", stdout);
+        if (_fileno(stderr) < 0) freopen_s(&fp, "CONOUT$", "w", stderr);
+        SetConsoleOutputCP(CP_UTF8);
     }
 #endif
 
+    // Keep logging alive through QApplication destruction as well.
+    SessionLog sessionLog;
+    const bool loggingReady = sessionLog.start();
     QApplication app(argc, argv);
     app.setOrganizationName("leapbtw");
     app.setApplicationName("uxplay-windows");
+    app.setProperty("sessionLogPath", loggingReady ? sessionLog.path() : QString());
+    if (!loggingReady) {
+        QMessageBox::warning(nullptr, "Logging unavailable", sessionLog.errorString());
+    }
+    qputenv("GST_DEBUG_NO_COLOR", "1");
     app.setWindowIcon(QIcon(QApplication::applicationDirPath() + "/resources/icon.ico"));
     
     QString appPath = QApplication::applicationDirPath();

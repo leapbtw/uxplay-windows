@@ -12,6 +12,8 @@ void AirPlayWorker::setArgs(const QStringList &args) {
 void AirPlayWorker::run() {
     std::vector<QByteArray> argBytes;
     std::vector<char *> argv;
+    argBytes.reserve(size_t(m_args.size()) + 1);
+    argv.reserve(size_t(m_args.size()) + 2);
     
     argBytes.push_back(QByteArray("uxplay"));
     argv.push_back(argBytes.back().data());
@@ -22,14 +24,16 @@ void AirPlayWorker::run() {
         argv.push_back(argBytes.back().data());
     }
 
-    qDebug() << "Starting UxPlay engine with arguments:" << m_args;
+    const int argc = static_cast<int>(argv.size());
+    argv.push_back(nullptr);
+    qInfo() << "Starting UxPlay engine";
     emit started();
 
     int ret = 0;
 
     // Loop con controllo di interruzione
     while (!isInterruptionRequested()) {
-        ret = start_uxplay(static_cast<int>(argv.size()), argv.data());
+        ret = start_uxplay(argc, argv.data());
 
         // Se il processo termina, esci dal loop
         if (ret != 0) {

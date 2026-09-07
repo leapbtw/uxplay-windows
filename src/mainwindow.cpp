@@ -1,8 +1,10 @@
 #include "mainwindow.h"
 #include "airplayworker.h"
+#include "logviewer.h"
 #include "mdns_responder.hpp"
 #include <windows.h>
 #include <winsvc.h>
+#include <io.h>
 
 #include <QProcess>
 #include <QAction>
@@ -45,7 +47,7 @@ BOOL CALLBACK EnumWindowsProcRename(HWND hwnd, LPARAM lParam) {
             QString title = QString::fromLocal8Bit(windowTitle);
             
             if (title.contains("Direct") && title.contains("enderer")) {
-                printf("found window to rename, setting new name...\n");
+                qInfo("Found renderer window; updating its title.");
                 SetWindowTextW(hwnd, reinterpret_cast<const wchar_t*>(data->newTitle.utf16()));
                 return FALSE;
             }
@@ -155,7 +157,7 @@ QStringList MainWindow::getArgumentsFromFile() {
 void MainWindow::setupUI() {
     setWindowTitle("uxplay-windows");
     setWindowIcon(QApplication::windowIcon());
-    setFixedSize(300, 260);
+    setFixedSize(320, 310);
 
     auto *central = new QWidget(this);
     setCentralWidget(central);
@@ -215,6 +217,10 @@ void MainWindow::setupUI() {
     connect(m_listargsBtn, &QPushButton::clicked, this, &MainWindow::openListArgsFile);
     layout->addWidget(m_listargsBtn);
 
+    auto *logButton = new QPushButton("Open current log", this);
+    connect(logButton, &QPushButton::clicked, this, &MainWindow::openCurrentLog);
+    layout->addWidget(logButton);
+
     m_licenseBtn = new QPushButton("License Information", this);
     connect(m_licenseBtn, &QPushButton::clicked, this, &MainWindow::showLicense);
     layout->addWidget(m_licenseBtn);
@@ -237,6 +243,21 @@ void MainWindow::openListArgsFile() {
     QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
 }
 
+void MainWindow::openCurrentLog() {
+    const QString path = qApp->property("sessionLogPath").toString();
+    if (path.isEmpty()) {
+        QMessageBox::warning(this, "Logging unavailable", "No session log is available.");
+        return;
+    }
+    if (!m_logViewer) {
+        m_logViewer = new LogViewer(path, this);
+        m_logViewer->setAttribute(Qt::WA_DeleteOnClose);
+    }
+    m_logViewer->showNormal();
+    m_logViewer->raise();
+    m_logViewer->activateWindow();
+}
+
 void MainWindow::setupTray() {
     m_tray = new QSystemTrayIcon(this);
     QIcon trayIcon;
@@ -249,6 +270,7 @@ void MainWindow::setupTray() {
     m_tray->setToolTip("uxplay-windows");
 
     m_trayMenu = new QMenu(this);
+    m_trayMenu->addAction("Open current log", this, &MainWindow::openCurrentLog);
     m_trayMenu->addAction("Quit", this, &MainWindow::quit);
     m_trayMenu->addAction("Restart", this, &MainWindow::restartApplication);
 
@@ -377,7 +399,8 @@ void MainWindow::startServer() {
 
     connect(m_worker, &AirPlayWorker::started, this, &MainWindow::onAirplayStarted);
     connect(m_worker, &AirPlayWorker::stopped, this, &MainWindow::onAirplayStopped);
-    connect(m_worker, &AirPlayWorker::finished, m_worker, &QObject::deleteLater);
+    connect(m_worker, &AirPlayWorker::errorOccurred, this, &MainWindow::onAirplayError);
+    connect(m_worker, &AirPlayWorker::finished, m_worker.data(), &QObject::deleteLater);
 
     m_worker->start();
 }
@@ -387,7 +410,7 @@ void MainWindow::stopServer() {
     if (m_worker) {
         m_worker->disconnect();
         if (m_worker->isRunning()) {
-            QMetaObject::invokeMethod(m_worker, &AirPlayWorker::stopAirplay, Qt::QueuedConnection);
+            QMetaObject::invokeMethod(m_worker.data(), &AirPlayWorker::stopAirplay, Qt::QueuedConnection);
             if (!m_worker->wait(1000)) {
                 m_worker->terminate();
             }
@@ -403,7 +426,7 @@ void MainWindow::onAirplayStarted() {
     m_running = true;
     updateStatus();
 
-    printf("onAirplayStarted()!\n");
+    qInfo("AirPlay server started.");
 
     // Only explicitly selected Direct3D sinks are known to support Alt+Enter.
     // Leave automatically selected GStreamer sink windows unchanged.
@@ -442,6 +465,7 @@ void MainWindow::onAirplayStopped() {
 }
 
 void MainWindow::onAirplayError(const QString &message) {
+    qCritical().noquote() << message;
     m_tray->showMessage("uxplay-windows", message, QSystemTrayIcon::Warning, 3000);
 }
 
@@ -476,16 +500,38 @@ void MainWindow::startBluetoothBeacon(const QString &path) {
     }
 
     m_beacon = new QProcess(this);
+    m_beaconOutput.clear();
     m_beacon->setProcessChannelMode(QProcess::MergedChannels);
 
     connect(m_beacon, &QProcess::readyRead, this, [this]() {
-        // Forward beacon logs to our debug console
-        qDebug() << "[beacon output]" << m_beacon->readAll().trimmed();
+        forwardBluetoothOutput();
+    });
+    connect(m_beacon, &QProcess::finished, this, [this](int, QProcess::ExitStatus) {
+        forwardBluetoothOutput(true);
+    });
+    connect(m_beacon, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        qWarning().noquote() << "Bluetooth beacon:" << m_beacon->errorString();
     });
 
     // Pass the explicit path to the beacon file
     m_beacon->start(exe, {"--path", path});
     qDebug() << "Beacon process started watching:" << path;
+}
+
+void MainWindow::forwardBluetoothOutput(bool finished) {
+    // Reads can split lines or UTF-8 characters. Reassemble each line before
+    // writing so diagnostics from another source cannot land inside it.
+    m_beaconOutput += m_beacon->readAll();
+    qsizetype newline;
+    while ((newline = m_beaconOutput.indexOf('\n')) >= 0) {
+        _write(_fileno(stdout), m_beaconOutput.constData(), unsigned(newline + 1));
+        m_beaconOutput.remove(0, newline + 1);
+    }
+    if (finished && !m_beaconOutput.isEmpty()) {
+        m_beaconOutput += '\n';
+        _write(_fileno(stdout), m_beaconOutput.constData(), unsigned(m_beaconOutput.size()));
+        m_beaconOutput.clear();
+    }
 }
 
 void MainWindow::stopBluetoothBeacon() {

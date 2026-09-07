@@ -10,10 +10,12 @@
 #include <QProcess>
 #include <QCheckBox>
 #include <QMessageBox>
+#include <QPointer>
 
 class QMenu;
 class QAction;
 class AirPlayWorker;
+class LogViewer;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -33,6 +35,7 @@ private slots:
     void showLicense();
     void openSettingsFile();
     void openListArgsFile();
+    void openCurrentLog();
     void quit();
     void onAirplayStarted();
     void onAirplayStopped();
@@ -50,9 +53,11 @@ private:
     void updateStatus();
     void startBluetoothBeacon(const QString &path);
     void stopBluetoothBeacon();
+    void forwardBluetoothOutput(bool finished = false);
     void applyRendererAndFullscreenArgs(QStringList &args);
 
     QProcess *m_beacon = nullptr;
+    QByteArray m_beaconOutput;
 
     QStringList getArgumentsFromFile();
     void ensureSettingsFileExists();
@@ -80,7 +85,8 @@ private:
     QPushButton *m_licenseBtn = nullptr;
     QLabel *m_statusLabel = nullptr;
 
-    AirPlayWorker *m_worker = nullptr;
+    QPointer<AirPlayWorker> m_worker;
+    QPointer<LogViewer> m_logViewer;
 
     bool m_running = false;
     bool m_quitting = false;
